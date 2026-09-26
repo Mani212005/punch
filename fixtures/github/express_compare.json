@@ -1,0 +1,28 @@
+{
+  "status": "ahead",
+  "ahead_by": 120,
+  "behind_by": 0,
+  "total_commits": 120,
+  "commits": [
+    {
+      "sha": "a1b2c3d4e5f6",
+      "commit": {
+        "message": "fix: update qs to 6.11.0 to resolve GHSA-hrpp-h998-j3pp",
+        "author": {
+          "name": "Express Maintainer",
+          "date": "2022-10-08T17:30:00Z"
+        }
+      }
+    }
+  ],
+  "files": [
+    {
+      "filename": "package.json",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "patch": "@@ -40,1 +40,1 @@\n-    \"qs\": \"6.5.2\",\n+    \"qs\": \"6.11.0\","
+    }
+  ]
+}

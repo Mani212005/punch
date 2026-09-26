@@ -1,0 +1,31 @@
+{
+  "name": "qs",
+  "description": "A querystring parser that supports nesting and arrays, with a depth limit",
+  "dist-tags": {
+    "latest": "6.13.0"
+  },
+  "versions": {
+    "6.5.2": {
+      "name": "qs",
+      "version": "6.5.2",
+      "description": "A querystring parser that supports nesting and arrays, with a depth limit"
+    },
+    "6.7.3": {
+      "name": "qs",
+      "version": "6.7.3",
+      "description": "A querystring parser that supports nesting and arrays, with a depth limit"
+    },
+    "6.11.0": {
+      "name": "qs",
+      "version": "6.11.0",
+      "description": "A querystring parser that supports nesting and arrays, with a depth limit"
+    },
+    "6.13.0": {
+      "name": "qs",
+      "version": "6.13.0",
+      "description": "A querystring parser that supports nesting and arrays, with a depth limit"
+    }
+  },
+  "license": "BSD-3-Clause",
+  "homepage": "https://github.com/ljharb/qs"
+}

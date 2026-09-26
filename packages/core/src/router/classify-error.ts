@@ -54,3 +54,33 @@ export async function classifyError(
   }
   return { errorClass: classifyErrorByCode(input), source: "code" };
 }
+
+export interface ClassifyErrorContext {
+  status?: number;
+  error?: unknown;
+  isMalformed?: boolean;
+  message?: string;
+  tool?: string;
+}
+
+export type ErrorClassifier = (context: ClassifyErrorContext) => ErrorClass;
+
+/**
+ * Pluggable error classification hook for tools and HTTP transport.
+ * Defaults to the deterministic classifyErrorByCode heuristic.
+ */
+export function defaultClassifyError(context: ClassifyErrorContext): ErrorClass {
+  if (context.isMalformed) {
+    return "malformed";
+  }
+
+  const text =
+    context.message ??
+    (context.error instanceof Error ? context.error.message : String(context.error ?? ""));
+
+  return classifyErrorByCode({
+    text,
+    status: context.status,
+    tool: context.tool,
+  });
+}
