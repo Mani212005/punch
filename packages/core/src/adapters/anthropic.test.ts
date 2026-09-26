@@ -12,11 +12,19 @@ import {
 } from "./anthropic.test-helpers.js";
 
 const fixture = (name: string): { turns: FixtureMessage[] } =>
-  JSON.parse(readFileSync(new URL(`../../../../fixtures/anthropic/${name}.json`, import.meta.url), "utf8"));
+  JSON.parse(
+    readFileSync(new URL(`../../../../fixtures/anthropic/${name}.json`, import.meta.url), "utf8"),
+  );
 
-const npmTool = async ({ name }: { name: string }): Promise<unknown> => ({ name, latest: "4.17.21" });
+const npmTool = async ({ name }: { name: string }): Promise<unknown> => ({
+  name,
+  latest: "4.17.21",
+});
 
-function adapter(turns: Turn[], extra: Partial<ConstructorParameters<typeof AnthropicAdapter>[0]> = {}) {
+function adapter(
+  turns: Turn[],
+  extra: Partial<ConstructorParameters<typeof AnthropicAdapter>[0]> = {},
+) {
   const mock = mockAnthropic(turns);
   const a = new AnthropicAdapter({
     model: "claude-opus-5",
@@ -38,7 +46,12 @@ const invalidResultTurn = (id: string): FixtureMessage => ({
   stop_reason: "tool_use",
   stop_sequence: null,
   content: [
-    { type: "tool_use", id: `toolu_${id}`, name: "write_result", input: { result: { findings: "nope" } } },
+    {
+      type: "tool_use",
+      id: `toolu_${id}`,
+      name: "write_result",
+      input: { result: { findings: "nope" } },
+    },
   ],
   usage: { input_tokens: 100, output_tokens: 10 },
 });
@@ -292,7 +305,12 @@ describe("AnthropicAdapter", () => {
 describe("parseAgentChaos", () => {
   it("parses the adapter-level profiles and ignores the rest", () => {
     expect(
-      parseAgentChaos(["provider-down:anthropic", "garbage:critic", "kill-after:researcher:3", "stall:executor"]),
+      parseAgentChaos([
+        "provider-down:anthropic",
+        "garbage:critic",
+        "kill-after:researcher:3",
+        "stall:executor",
+      ]),
     ).toEqual({
       providerDown: ["anthropic"],
       garbage: ["critic"],

@@ -19,7 +19,9 @@ describe.skipIf(!process.env.ANTHROPIC_API_KEY || !model)("AnthropicAdapter (liv
 
   it("completes a tiny subtask via write_result", async () => {
     const events = await collect(
-      adapter.run(runInput({ task: "Look up lodash with npm_lookup, then write_result.", effort: "low" })),
+      adapter.run(
+        runInput({ task: "Look up lodash with npm_lookup, then write_result.", effort: "low" }),
+      ),
     );
     expect(events.find((e) => e.type === "result")).toBeDefined();
     expect(events.at(-1)).toMatchObject({ type: "done", status: "ok" });

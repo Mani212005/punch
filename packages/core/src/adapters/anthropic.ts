@@ -70,7 +70,10 @@ export function createAnthropicAdapter(
     model: agent.model,
     providerId: provider.id,
     ...(provider.kind === "anthropic"
-      ? { apiKeyEnv: provider.apiKeyEnv, ...(provider.baseUrl ? { baseUrl: provider.baseUrl } : {}) }
+      ? {
+          apiKeyEnv: provider.apiKeyEnv,
+          ...(provider.baseUrl ? { baseUrl: provider.baseUrl } : {}),
+        }
       : {}),
     ...(agent.pricing ? { pricing: agent.pricing } : {}),
     ...options,
@@ -143,7 +146,8 @@ export class AnthropicAdapter implements AgentAdapter {
         max_tokens: 256,
         messages: [{ role: "user", content: "Reply with the single word: ok" }],
       });
-      if (reply.stop_reason === "refusal") return { ok: false, detail: "model refused the test call" };
+      if (reply.stop_reason === "refusal")
+        return { ok: false, detail: "model refused the test call" };
       return { ok: true, detail: `${this.options.model} responded` };
     } catch (err) {
       return { ok: false, detail: describeError(err) };
@@ -191,7 +195,9 @@ export class AnthropicAdapter implements AgentAdapter {
       description:
         "Submit the final result of this subtask. Validated against the required schema; " +
         "an invalid result is returned to you once for correction.",
-      input_schema: writeResultInputSchema(input.resultSchema) as Anthropic.Beta.BetaTool.InputSchema,
+      input_schema: writeResultInputSchema(
+        input.resultSchema,
+      ) as Anthropic.Beta.BetaTool.InputSchema,
       parse: (raw) => z.object({ result: z.unknown() }).parse(raw) as { result: unknown },
       run: ({ result }) => {
         const verdict = gate.submit(garbage ? GARBAGE_RESULT : result);
@@ -291,10 +297,16 @@ export class AnthropicAdapter implements AgentAdapter {
     if (gate.failure !== null) return finish("error", gate.failure);
     if (refusal !== null) return finish("refusal", refusal);
     if (killed) {
-      return finish("error", `agent crashed after ${turns} turns (chaos: kill-after:${input.role}:${turns})`);
+      return finish(
+        "error",
+        `agent crashed after ${turns} turns (chaos: kill-after:${input.role}:${turns})`,
+      );
     }
     if (lastStopReason === "tool_use" || turns >= input.maxTurns) {
-      return finish("max_turns", `reached maxTurns (${input.maxTurns}) without ${WRITE_RESULT_TOOL}`);
+      return finish(
+        "max_turns",
+        `reached maxTurns (${input.maxTurns}) without ${WRITE_RESULT_TOOL}`,
+      );
     }
     return finish("error", `agent ended its turn without calling ${WRITE_RESULT_TOOL}`);
   }

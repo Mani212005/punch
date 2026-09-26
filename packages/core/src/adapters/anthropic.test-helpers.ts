@@ -39,7 +39,11 @@ export function messageToSse(message: FixtureMessage): string {
           : block.type === "thinking"
             ? { type: "thinking", thinking: "", signature: "" }
             : block;
-    body += sse("content_block_start", { type: "content_block_start", index, content_block: start });
+    body += sse("content_block_start", {
+      type: "content_block_start",
+      index,
+      content_block: start,
+    });
     if (block.type === "text") {
       const text = String(block.text);
       const mid = Math.ceil(text.length / 2);
