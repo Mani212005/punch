@@ -189,12 +189,25 @@ describe("stopping conditions", () => {
   });
 
   it("stops on the wall-clock cap, aborting hung work", async () => {
+    // Deterministic under load: the injected clock advances past the cap on
+    // every read, so the wall-clock budget trips on metered steps and aborts
+    // the hung tool immediately instead of after a real 250ms sleep. No
+    // real-time wait means machine contention cannot push this past the
+    // vitest timeout, so no per-test timeout extension is needed. The tool
+    // timeout stays short so a future abort regression fails fast instead of
+    // hanging on a 60s real timer.
+    let t = 0;
     const r = await run(
-      { chaos: ["tool:github_get_contents:hang"], toolTimeoutMs: 60_000, wrapUpTimeoutMs: 5000 },
+      {
+        chaos: ["tool:github_get_contents:hang"],
+        toolTimeoutMs: 1000,
+        wrapUpTimeoutMs: 5000,
+        now: () => (t += 100),
+      },
       withBudgets({ maxWallClockMs: 250 }),
     );
     expectWrapUp(r, "wallClock");
-  }, 10000);
+  });
 
   it("an operator abort finishes aborted with a wrap-up", async () => {
     const controller = new AbortController();

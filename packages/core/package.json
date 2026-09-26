@@ -18,7 +18,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --project unit --passWithNoTests && vitest run --project integration --passWithNoTests",
+    "test:unit": "vitest run --project unit --passWithNoTests",
+    "test:integration": "vitest run --project integration --passWithNoTests"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
