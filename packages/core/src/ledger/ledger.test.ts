@@ -145,6 +145,7 @@ describe("ReportRenderer", () => {
           fixedFailures: [],
           verdict: "PASS",
           evidenceIds: [],
+          changedFiles: [],
         },
         critic: "ACCEPTED",
         recommendedAction: "UPGRADE",
