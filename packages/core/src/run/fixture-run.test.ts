@@ -22,7 +22,7 @@ async function run(
 ): Promise<RunResult> {
   const fixture = await loadRunFixture(FIXTURE);
   edit(fixture);
-  return runLoop(fixtureRunOptions(fixture, { runsDir, toolTimeoutMs: 150, ...extra }));
+  return runLoop(fixtureRunOptions(fixture, { runsDir, toolTimeoutMs: 2000, ...extra }));
 }
 
 const kinds = (r: RunResult) => r.events.map((e) => e.kind);
@@ -115,7 +115,11 @@ describe("tool chaos profiles (plan.md 3.6)", () => {
   for (const tool of READ_TOOLS) {
     for (const mode of MODES) {
       it(`${tool}:${mode} completes ${USED_TOOLS.has(tool) ? "degraded" : "untouched"}`, async () => {
-        const r = await run({ chaos: [`tool:${tool}:${mode}`] });
+        const r = await run({
+          chaos: [`tool:${tool}:${mode}`],
+          // only a hung tool needs the short deadline; the rest must not flake under load
+          ...(mode === "hang" ? { toolTimeoutMs: 150 } : {}),
+        });
         expectWellFormed(r);
         expect(r.reportKey).toBe("report");
         if (USED_TOOLS.has(tool)) {
