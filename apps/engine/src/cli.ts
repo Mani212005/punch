@@ -69,7 +69,11 @@ export function buildProgram(): Command {
       const fs = await import("fs/promises");
       const path = await import("path");
       const decisionFile = path.join("runs", runId, "approvals", `${approvalId}.decision.json`);
-      await fs.writeFile(decisionFile, JSON.stringify({ approved: true, decidedBy: "cli-approve" }), "utf-8");
+      await fs.writeFile(
+        decisionFile,
+        JSON.stringify({ approved: true, decidedBy: "cli-approve" }),
+        "utf-8",
+      );
       console.log(`Approved run ${runId} action ${approvalId}`);
     });
   program
@@ -81,7 +85,15 @@ export function buildProgram(): Command {
       const fs = await import("fs/promises");
       const path = await import("path");
       const decisionFile = path.join("runs", runId, "approvals", `${approvalId}.decision.json`);
-      await fs.writeFile(decisionFile, JSON.stringify({ approved: false, decidedBy: "cli-deny", reason: "denied via CLI command" }), "utf-8");
+      await fs.writeFile(
+        decisionFile,
+        JSON.stringify({
+          approved: false,
+          decidedBy: "cli-deny",
+          reason: "denied via CLI command",
+        }),
+        "utf-8",
+      );
       console.log(`Denied run ${runId} action ${approvalId}`);
     });
 

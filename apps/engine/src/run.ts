@@ -72,9 +72,11 @@ export async function runCommand(
   const overrides: Partial<RunLoopOptions> = {
     runId,
     chaos: options.chaos ?? [],
-    approval: { 
+    approval: {
       unattended: options.unattended ?? false,
-      gate: !(options.unattended ?? false) ? createCliApprovalGate(options.runsDir ?? "runs", runId) : undefined
+      gate: !(options.unattended ?? false)
+        ? createCliApprovalGate(options.runsDir ?? "runs", runId)
+        : undefined,
     },
     onEvent: (event) => {
       const line = describeEvent(event);

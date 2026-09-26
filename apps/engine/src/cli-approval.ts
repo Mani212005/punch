@@ -77,7 +77,7 @@ export function createCliApprovalGate(runsDir: string, runId: string): CallbackA
         console.log(`Payload: ${payloadStr}`);
         console.log(`Run: ${runId} | Approval ID: ${request.approvalId}`);
         console.log(`=========================================`);
-        
+
         rl = readline.createInterface({
           input: process.stdin,
           output: process.stdout,
@@ -91,7 +91,11 @@ export function createCliApprovalGate(runsDir: string, runId: string): CallbackA
             if (normalized === "y" || normalized === "yes") {
               await finish({ approved: true, decidedBy: "cli-prompt" });
             } else if (normalized === "n" || normalized === "no" || normalized === "") {
-              await finish({ approved: false, decidedBy: "cli-prompt", reason: "denied via CLI prompt" });
+              await finish({
+                approved: false,
+                decidedBy: "cli-prompt",
+                reason: "denied via CLI prompt",
+              });
             } else {
               console.log("Please enter 'y' or 'n'.");
               ask();
@@ -100,7 +104,9 @@ export function createCliApprovalGate(runsDir: string, runId: string): CallbackA
         };
         ask();
       } else {
-        console.log(`\n[Approval required] Tool: ${request.tool} | Run: ${runId} | ID: ${request.approvalId}`);
+        console.log(
+          `\n[Approval required] Tool: ${request.tool} | Run: ${runId} | ID: ${request.approvalId}`,
+        );
         console.log(`Run 'punch approve ${runId} ${request.approvalId}' in another terminal.`);
       }
     });
