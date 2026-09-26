@@ -43,6 +43,10 @@ export * from "./roles/review.js";
 export * from "./slots/index.js";
 export * from "./run/index.js";
 
+// Orchestrator session (C2)
+export * from "./orchestrator/tools.js";
+export * from "./orchestrator/session.js";
+
 // Validation sandbox (E5)
 export * from "./sandbox/runner.js";
 export * from "./sandbox/docker.js";

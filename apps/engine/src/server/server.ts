@@ -1,5 +1,12 @@
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
+import {
+  OrchestratorSession,
+  createDefaultAdapterRegistry,
+  createJev,
+  createTypeSafeTransport,
+  type ManualSelection,
+} from "@punch/core";
 import { AssignmentRequest, HealthCheckResult, SlotRole } from "@punch/shared";
 import { ConfigError, getConfigPath, loadConfig, validateConfig } from "../config/loader.js";
 import { TestAdapterRegistry } from "../config/registry.js";
@@ -100,6 +107,82 @@ export function createEngineServer(options: EngineServerOptions): EngineServer {
     ...(options.transformRunOptions ? { transformRunOptions: options.transformRunOptions } : {}),
   });
   const sessions = new SessionStore(options.sessionsDir ?? `${options.runsDir}/sessions`, now);
+
+  // -- orchestrator sessions (C2) -------------------------------------------
+  // One live OrchestratorSession per stored session. The run itself never
+  // depends on it: `createRun` launches via the run registry and returns a
+  // receipt while the run continues on its own (plan.md 2.7).
+  const orchestrators = new Map<string, OrchestratorSession>();
+  const narrationCursors = new Map<string, number>();
+
+  async function getOrchestrator(stored: {
+    id: string;
+    orchestratorAgentId: string;
+    mode: "auto" | "manual";
+  }): Promise<OrchestratorSession | null> {
+    const existing = orchestrators.get(stored.id);
+    if (existing) {
+      existing.mode = stored.mode;
+      existing.orchestratorAgentId = stored.orchestratorAgentId;
+      return existing;
+    }
+    let config;
+    try {
+      config = await loadConfig(getConfigPath(options.configPath));
+    } catch {
+      return null;
+    }
+    try {
+      const session = new OrchestratorSession({
+        sessionId: stored.id,
+        config,
+        mode: stored.mode,
+        orchestratorAgentId: stored.orchestratorAgentId,
+        jev: createJev(createTypeSafeTransport()),
+        adapters: createDefaultAdapterRegistry(),
+        createRun: async (input) => {
+          const started = await registry.start({
+            ...(input.repoUrl ? { repoUrl: input.repoUrl } : {}),
+            ...(input.brief ? { brief: input.brief } : {}),
+            ...(input.budgetUsd !== undefined ? { budgetUsd: input.budgetUsd } : {}),
+            ...(stored.mode ? { mode: stored.mode } : {}),
+            chaos: [],
+          });
+          await sessions.attachRun(stored.id, started.id);
+          return { runId: started.id, status: "running" };
+        },
+        getRunStatus: async (runId) => {
+          const detail = registry.detail(runId);
+          if (!detail) throw new Error(`unknown run ${runId}`);
+          return {
+            runId,
+            status: detail.summary.status,
+            pendingApprovals: detail.pendingApprovals.map((p) => ({
+              approvalId: p.approvalId,
+              tool: p.tool,
+              payload: p.payload,
+            })),
+          };
+        },
+        answerApproval: async (input) => {
+          const outcome = registry.answerApproval(input.runId, input.approvalId, {
+            approved: input.approved,
+            decidedBy: input.decidedBy,
+            ...(input.reason ? { reason: input.reason } : {}),
+          });
+          if (outcome !== "answered") throw new Error(`approval ${input.approvalId}: ${outcome}`);
+          return { ok: true as const };
+        },
+        onNarration: () => {
+          // Narration streams on the session SSE via the cursor below.
+        },
+      });
+      orchestrators.set(stored.id, session);
+      return session;
+    } catch {
+      return null;
+    }
+  }
 
   let server: http.Server | null = null;
 
@@ -321,14 +404,36 @@ export function createEngineServer(options: EngineServerOptions): EngineServer {
         );
       const stored = await sessions.appendMessage(segments[1] ?? "", "user", parsed.data.text);
       if (!stored) return send(res, 404, { error: `unknown session ${segments[1]}` }, corsHeaders);
-      return send(
-        res,
-        200,
-        {
-          reply: "Orchestrator sessions arrive in C2; your message is recorded on the transcript.",
-        },
-        corsHeaders,
-      );
+      // C2: drive the orchestrator turn. When no engine agent is reachable
+      // (no config, no keys, offline), fall back to the recorded transcript
+      // so messaging stays available.
+      const orchestrator = await getOrchestrator(stored);
+      if (!orchestrator) {
+        return send(
+          res,
+          200,
+          {
+            reply:
+              "Orchestrator sessions arrive in C2; your message is recorded on the transcript.",
+          },
+          corsHeaders,
+        );
+      }
+      try {
+        const reply = await orchestrator.handleUserMessage(parsed.data.text);
+        await sessions.appendMessage(stored.id, "engine", reply);
+        return send(res, 200, { reply }, corsHeaders);
+      } catch {
+        return send(
+          res,
+          200,
+          {
+            reply:
+              "Orchestrator sessions arrive in C2; your message is recorded on the transcript.",
+          },
+          corsHeaders,
+        );
+      }
     }
     if (
       first === "sessions" &&
@@ -348,6 +453,21 @@ export function createEngineServer(options: EngineServerOptions): EngineServer {
           const message = current.messages[sent];
           sent += 1;
           res.write(`id: ${sent}\ndata: ${JSON.stringify(message)}\n\n`);
+        }
+        // Orchestrator narration (plan.md 4.3 conversation tile) streams on
+        // the same SSE channel as transcript messages.
+        const live = orchestrators.get(segments[1] ?? "");
+        if (live) {
+          const seen = narrationCursors.get(live.sessionId) ?? 0;
+          if (live.narrations.length > seen) {
+            for (const narration of live.narrations.slice(seen)) {
+              sent += 1;
+              res.write(
+                `id: ${sent}\ndata: ${JSON.stringify({ from: "engine", text: narration.text, at: narration.at, kind: narration.kind })}\n\n`,
+              );
+            }
+            narrationCursors.set(live.sessionId, live.narrations.length);
+          }
         }
         return true;
       };
@@ -500,6 +620,17 @@ export function createEngineServer(options: EngineServerOptions): EngineServer {
       }
       if (!registry.setAssignments(segments[1] ?? "", parsed.data)) {
         return send(res, 404, { error: `unknown run ${segments[1]}` }, corsHeaders);
+      }
+      // Manual selections also feed orchestrator sessions tracking this run,
+      // so a later `start_run` in manual mode is checked against them.
+      {
+        const selections: ManualSelection[] = parsed.data.selections.map((s) => ({
+          role: s.role,
+          agentId: s.agentId,
+        }));
+        for (const session of orchestrators.values()) {
+          if (session.runIds.includes(segments[1] ?? "")) session.setManualSelections(selections);
+        }
       }
       return send(res, 200, { ok: true }, corsHeaders);
     }
