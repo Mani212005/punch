@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { BlackboardEntry, Finding } from "@punch/shared";
+import type { BlackboardEntry, Finding, Handoff } from "@punch/shared";
 import {
   Evidence,
   type AdapterRunInput,
@@ -11,6 +11,7 @@ import {
   type ToolSpec,
 } from "@punch/shared";
 import { validateResult } from "../adapters/agent.js";
+import { handoffPrompt } from "../slots/handoff.js";
 import type { ToolExecutor } from "../adapters/anthropic.js";
 import type { ApprovalGate } from "../approval.js";
 import type { Blackboard } from "../blackboard.js";
@@ -32,6 +33,8 @@ export interface RoleDeps {
   maxTurns?: number;
   /** Every adapter event, for heartbeats and trace forwarding by the run loop. */
   onEvent?: (event: AgentEvent) => void;
+  /** Set for a replacement agent: what the predecessor did, so the subtask continues (plan.md 2.4). */
+  handoff?: Handoff;
 }
 
 /** What a producing role hands to the critic before anything reaches the blackboard. */
@@ -128,8 +131,8 @@ export async function runRole(
   const input: AdapterRunInput = {
     role: run.role,
     system: run.system,
-    task: run.task,
-    inputs: run.inputs,
+    task: deps.handoff ? `${run.task}\n${handoffPrompt(deps.handoff)}` : run.task,
+    inputs: deps.handoff ? { ...run.inputs, handoff: deps.handoff } : run.inputs,
     tools: run.tools,
     resultSchema: run.resultSchema,
     effort: deps.effort ?? "medium",
@@ -281,13 +284,15 @@ export function toolsForRole(role: SlotRole): ToolSpec[] {
     case "researcher":
     case "inventory":
     case "impact":
-      return Object.values(TOOL_SPECS).filter((spec) => !spec.irreversible);
+    case "reachability":
+      return [
+        ...READ_ONLY_TOOLS,
+        ...Object.values(TOOL_SPECS).filter((spec) => !spec.irreversible),
+      ];
     case "executor":
       return [READ_BLACKBOARD_TOOL, LIST_BLACKBOARD_TOOL, TOOL_SPECS["github_create_issue"]!];
     case "critic":
-    case "reachability":
     case "investigator":
-      // E1 adds the repository source tools for reachability; until then reads only.
       return READ_ONLY_TOOLS;
     case "planner":
       return [];

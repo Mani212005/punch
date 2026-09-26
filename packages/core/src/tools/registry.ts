@@ -8,6 +8,14 @@ import { NpmClient } from "./npm.js";
 import { GitHubAdvisoryClient } from "./gh-advisory.js";
 import { buildDependencyInventory } from "./inventory.js";
 import { HttpError } from "./http.js";
+import {
+  executeFetchRepoSource,
+  executeReadRepoFile,
+  executeAnalyzeImportGraph,
+  executeFindCallSites,
+  executeFindEntrypointsAndRoutes,
+  executeMapTestsForModule,
+} from "./source-tools.js";
 
 export interface ToolExecutionContext {
   runId?: string;
@@ -242,6 +250,212 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
         pnpmLock: { type: "string", description: "Optional contents of pnpm-lock.yaml" },
       },
       required: ["packageJson"],
+    },
+    irreversible: false,
+  },
+  fetch_repo_source: {
+    name: "fetch_repo_source",
+    description: "Fetch repository source from GitHub or local directory into a read-only workdir.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        owner: { type: "string", description: "GitHub repository owner" },
+        repo: { type: "string", description: "GitHub repository name" },
+        ref: { type: "string", description: "Git commit SHA, branch, or tag" },
+        repoUrl: { type: "string", description: "Full GitHub repository URL" },
+        localPath: {
+          type: "string",
+          description: "Local directory path for offline/test execution",
+        },
+        maxFiles: { type: "number", description: "Maximum number of files to fetch" },
+        maxFileSize: { type: "number", description: "Maximum size per file in bytes" },
+        timeoutMs: { type: "number", description: "Timeout in milliseconds" },
+      },
+    },
+    irreversible: false,
+  },
+  read_repo_file: {
+    name: "read_repo_file",
+    description:
+      "Read a source file from the repository workdir with line span and evidence generation.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        filePath: { type: "string", description: "Relative path to file in workdir" },
+        startLine: { type: "number", description: "1-based starting line number" },
+        endLine: { type: "number", description: "1-based ending line number" },
+        maxBytes: { type: "number", description: "Maximum bytes to read" },
+      },
+      required: ["workdir", "filePath"],
+    },
+    irreversible: false,
+  },
+  static_read_file: {
+    name: "static_read_file",
+    description: "Alias for read_repo_file: read a source file from the repository workdir.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        filePath: { type: "string", description: "Relative path to file in workdir" },
+        startLine: { type: "number", description: "1-based starting line number" },
+        endLine: { type: "number", description: "1-based ending line number" },
+      },
+      required: ["workdir", "filePath"],
+    },
+    irreversible: false,
+  },
+  analyze_import_graph: {
+    name: "analyze_import_graph",
+    description:
+      "Build TypeScript/JavaScript AST import and export graph across all repository source files.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        targetPackages: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional package names to check usage and prove absence for",
+        },
+        targetPackage: { type: "string", description: "Single package name to check" },
+        maxFiles: { type: "number", description: "Maximum files to analyze" },
+        timeoutMs: { type: "number", description: "Analysis timeout in milliseconds" },
+      },
+      required: ["workdir"],
+    },
+    irreversible: false,
+  },
+  static_import_graph: {
+    name: "static_import_graph",
+    description:
+      "Alias for analyze_import_graph: build import and export graph across repository source files.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        targetPackages: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional package names to check usage and prove absence for",
+        },
+        targetPackage: { type: "string", description: "Single package name to check" },
+      },
+      required: ["workdir"],
+    },
+    irreversible: false,
+  },
+  find_call_sites: {
+    name: "find_call_sites",
+    description:
+      "Search for call sites and member accesses of affected symbols belonging to a package.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        package: { type: "string", description: "Target package name (e.g. qs, lodash)" },
+        targetPackage: { type: "string", description: "Alternative package name parameter" },
+        symbols: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of affected symbol names (e.g. ['parse', 'merge'])",
+        },
+        maxResults: { type: "number", description: "Maximum call sites to return" },
+        timeoutMs: { type: "number", description: "Search timeout in milliseconds" },
+      },
+      required: ["workdir"],
+    },
+    irreversible: false,
+  },
+  static_call_sites: {
+    name: "static_call_sites",
+    description: "Alias for find_call_sites: search for call sites and usages of affected symbols.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        package: { type: "string", description: "Target package name" },
+        symbols: {
+          type: "array",
+          items: { type: "string" },
+          description: "List of symbol names",
+        },
+      },
+      required: ["workdir"],
+    },
+    irreversible: false,
+  },
+  find_entrypoints_and_routes: {
+    name: "find_entrypoints_and_routes",
+    description:
+      "Identify application entrypoints and HTTP routes (Express, Fastify, Next.js, Hono).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        targetPackage: {
+          type: "string",
+          description: "Optional package to test reachability from routes",
+        },
+        targetSymbols: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional symbol names to test reachability from routes",
+        },
+        timeoutMs: { type: "number", description: "Discovery timeout in milliseconds" },
+      },
+      required: ["workdir"],
+    },
+    irreversible: false,
+  },
+  static_entrypoints: {
+    name: "static_entrypoints",
+    description: "Alias for find_entrypoints_and_routes: list entrypoints and HTTP routes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        targetPackage: { type: "string", description: "Optional package name" },
+      },
+      required: ["workdir"],
+    },
+    irreversible: false,
+  },
+  map_tests_for_module: {
+    name: "map_tests_for_module",
+    description: "Map test files in the repository to target modules, packages, and symbols.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        targetModule: {
+          type: "string",
+          description: "Target module relative path (e.g. src/parser.ts)",
+        },
+        targetPackage: { type: "string", description: "Target package name (e.g. qs)" },
+        targetSymbols: {
+          type: "array",
+          items: { type: "string" },
+          description: "Target symbol names to test coverage for",
+        },
+        timeoutMs: { type: "number", description: "Mapping timeout in milliseconds" },
+      },
+      required: ["workdir"],
+    },
+    irreversible: false,
+  },
+  static_test_map: {
+    name: "static_test_map",
+    description: "Alias for map_tests_for_module: map test files covering a module or package.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workdir: { type: "string", description: "Path to repository workdir" },
+        targetModule: { type: "string", description: "Target module relative path" },
+        targetPackage: { type: "string", description: "Target package name" },
+      },
+      required: ["workdir"],
     },
     irreversible: false,
   },
@@ -829,6 +1043,92 @@ export async function executeTool<T = unknown>(
           packageLock: input.packageLock as string | undefined,
           pnpmLock: input.pnpmLock as string | undefined,
         });
+        break;
+      }
+      case "fetch_repo_source": {
+        output = await executeFetchRepoSource(
+          {
+            owner: input.owner as string | undefined,
+            repo: input.repo as string | undefined,
+            ref: input.ref as string | undefined,
+            repoUrl: input.repoUrl as string | undefined,
+            localPath: input.localPath as string | undefined,
+            maxFiles: input.maxFiles as number | undefined,
+            maxFileSize: input.maxFileSize as number | undefined,
+            timeoutMs: input.timeoutMs as number | undefined,
+          },
+          context,
+        );
+        break;
+      }
+      case "read_repo_file":
+      case "static_read_file": {
+        output = await executeReadRepoFile(
+          {
+            workdir: input.workdir as string,
+            filePath: input.filePath as string,
+            startLine: input.startLine as number | undefined,
+            endLine: input.endLine as number | undefined,
+            maxBytes: input.maxBytes as number | undefined,
+          },
+          context,
+        );
+        break;
+      }
+      case "analyze_import_graph":
+      case "static_import_graph": {
+        output = await executeAnalyzeImportGraph(
+          {
+            workdir: input.workdir as string,
+            targetPackages: input.targetPackages as string[] | undefined,
+            targetPackage: input.targetPackage as string | undefined,
+            maxFiles: input.maxFiles as number | undefined,
+            timeoutMs: input.timeoutMs as number | undefined,
+          },
+          context,
+        );
+        break;
+      }
+      case "find_call_sites":
+      case "static_call_sites": {
+        output = await executeFindCallSites(
+          {
+            workdir: input.workdir as string,
+            package: input.package as string | undefined,
+            targetPackage: input.targetPackage as string | undefined,
+            symbols: input.symbols as string[] | undefined,
+            maxResults: input.maxResults as number | undefined,
+            timeoutMs: input.timeoutMs as number | undefined,
+          },
+          context,
+        );
+        break;
+      }
+      case "find_entrypoints_and_routes":
+      case "static_entrypoints": {
+        output = await executeFindEntrypointsAndRoutes(
+          {
+            workdir: input.workdir as string,
+            targetPackage: input.targetPackage as string | undefined,
+            targetSymbols: input.targetSymbols as string[] | undefined,
+            timeoutMs: input.timeoutMs as number | undefined,
+          },
+          context,
+        );
+        break;
+      }
+      case "map_tests_for_module":
+      case "static_test_map": {
+        output = await executeMapTestsForModule(
+          {
+            workdir: input.workdir as string,
+            targetModule: input.targetModule as string | undefined,
+            targetPackage: input.targetPackage as string | undefined,
+            targetSymbols: input.targetSymbols as string[] | undefined,
+            timeoutMs: input.timeoutMs as number | undefined,
+          },
+          context,
+        );
         break;
       }
       default:

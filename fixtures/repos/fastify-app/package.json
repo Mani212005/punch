@@ -1,0 +1,9 @@
+{
+  "name": "fastify-fixture-app",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "fastify": "^4.26.0",
+    "axios": "^1.6.0"
+  }
+}

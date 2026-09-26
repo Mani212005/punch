@@ -127,6 +127,9 @@ importers:
       '@typesafe-ai/sdk':
         specifier: ^0.6.0
         version: 0.6.0
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -134,9 +137,6 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.4
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
       vitest:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@22.20.4)(jsdom@26.1.0)

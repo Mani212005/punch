@@ -21,7 +21,10 @@ export * from "./tools/osv.js";
 export * from "./tools/npm.js";
 export * from "./tools/gh-advisory.js";
 export * from "./tools/inventory.js";
+export * from "./tools/source-tools.js";
 export * from "./tools/registry.js";
+export * from "./ledger/index.js";
+export * from "./analysis/index.js";
 export * from "./adapters/agent.js";
 export * from "./adapters/anthropic.js";
 export * from "./planner.js";
@@ -32,6 +35,7 @@ export * from "./roles/critic.js";
 export * from "./roles/review.js";
 
 // Run loop
+export * from "./slots/index.js";
 export * from "./run/index.js";
 
 // Validation sandbox (E5)

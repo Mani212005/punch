@@ -40,8 +40,18 @@ export function describeEvent(e: TraceEvent): string | null {
       return `  critic ${e.verdict} ${e.subtaskId}`;
     case "blackboard.written":
       return `  blackboard ${e.key} (${e.entry.status})`;
+    case "slot.stalled":
+      return `  slot ${e.role} stalled: no events for ${e.silentMs}ms${e.nudged ? " (nudged)" : ""}`;
     case "slot.failed":
-      return `  slot ${e.role} failed: ${e.reason.detail}`;
+      return `  slot ${e.role} failed (${e.reason.kind}): ${e.reason.detail}`;
+    case "slot.rejected":
+      return `  slot ${e.role} rejected ${e.rejections} times`;
+    case "slot.replacing":
+      return `  slot ${e.role}: ${e.failedAgentId} -> ${e.replacementAgentId} (${e.selection.provenance}), ${e.handoff.cachedResultCount} cached results handed over`;
+    case "slot.replaced":
+      return `  slot ${e.role} replaced in ${e.takeoverMs}ms`;
+    case "slot.exhausted":
+      return `  slot ${e.role} exhausted: ${e.reason}`;
     case "replan.triggered":
       return `replan triggered by ${e.subtaskId}: ${e.reason}`;
     case "approval.requested":
