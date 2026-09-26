@@ -28,6 +28,7 @@ export default function Header() {
         <Link href="/#features">Features</Link>
         <Link href="/watch/investigation">Watch</Link>
         <Link href="/#run-locally">Run locally</Link>
+        <Link href="/console">Console</Link>
         <a
           href="https://github.com/Mani212005/punch"
           target="_blank"

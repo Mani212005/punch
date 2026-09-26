@@ -39,3 +39,16 @@ main {
     padding: 10px;
   }
 }
+
+/* Nav links wrap under the brand on narrow screens instead of overlapping. */
+@media (max-width: 900px) {
+  .bz-nav {
+    flex-wrap: wrap;
+  }
+  .bz-nav .links {
+    flex-wrap: wrap;
+    margin-left: 0;
+    width: 100%;
+    row-gap: 6px;
+  }
+}

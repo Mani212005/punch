@@ -1,0 +1,108 @@
+/* Console layout details the shared bento classes do not cover. */
+.pc-strip {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pc-strip .pc-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pc-pair-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  width: 100%;
+}
+.pc-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.pc-run-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.pc-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 340px;
+  min-height: 120px;
+  overflow-y: auto;
+}
+.pc-thread .bz-msg {
+  max-width: 82%;
+}
+.pc-send {
+  display: flex;
+}
+.pc-send .bz-input {
+  border-right: 0;
+}
+.pc-payload {
+  font-family: var(--bz-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 180px;
+  overflow: auto;
+  border: 2px solid var(--bz-ink);
+  padding: 6px 8px;
+  margin: 0;
+  background: var(--bz-paper);
+}
+.pc-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  font-size: 12px;
+}
+.pc-facts dt {
+  font-family: var(--bz-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--bz-ink-2);
+}
+.pc-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.pc-error {
+  color: var(--bz-red);
+  font-family: var(--bz-font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.pc-approval {
+  border-color: var(--bz-yellow);
+  box-shadow: inset 0 0 0 2px var(--bz-yellow);
+}
+@media (max-width: 900px) {
+  .pc-pair-form,
+  .pc-controls,
+  .pc-run-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pc-strip .pc-actions {
+    margin-left: 0;
+  }
+  .pc-thread .bz-msg {
+    max-width: 100%;
+  }
+}
+@media (max-width: 900px) {
+  .pc-controls .bz-seg > button,
+  .pc-controls .bz-seg > button:last-child {
+    border: var(--bz-line) solid var(--bz-ink);
+  }
+}
