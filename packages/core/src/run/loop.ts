@@ -4,6 +4,8 @@ import type {
   BlackboardEntry,
   Config,
   Effort,
+  FailureReason,
+  Handoff,
   Plan,
   Provider,
   SlotRole,
@@ -33,6 +35,14 @@ import type { Jev } from "../router/jev.js";
 import { ROUTED_ROLES } from "../router/jev.js";
 import { classifyError } from "../router/classify-error.js";
 import { routeSubtask, routeTask, type RoutePlan, type RouteEvent } from "../router/policy.js";
+import { chaosAdapter, hasSlotChaos, parseSlotChaos } from "../slots/chaos.js";
+import { watchKillRequests } from "../slots/control.js";
+import { AttemptLog } from "../slots/handoff.js";
+import {
+  AttemptAborted,
+  SlotSupervisor,
+  type AttemptWatch,
+} from "../slots/supervisor.js";
 import { ToolCache } from "../tools/cache.js";
 import { parseChaosProfile } from "../tools/chaos.js";
 import type { ToolExecutionContext } from "../tools/registry.js";
@@ -82,6 +92,21 @@ export interface RunLoopOptions {
   maxFailureReplans?: number;
   /** Separate, bounded path: replans triggered by a critic rejection that requests a new task. */
   maxRejectionReplans?: number;
+  /** Called once with the run's controls, e.g. for the HTTP API's kill endpoint. */
+  onReady?: (handle: RunHandle) => void;
+  /** Slot supervisor timing (plan.md 2.1/2.2); the defaults come from `config.policy.stallAfterMs`. */
+  attemptTimeoutMs?: number;
+  nudgeGraceMs?: number;
+  stallCheckIntervalMs?: number;
+  /** Poll `runs/<id>/control` for `punch kill` requests from another process. Default true. */
+  killChannel?: boolean;
+}
+
+/** What a caller can do to a live run. */
+export interface RunHandle {
+  runId: string;
+  /** Operator kill of the agent working in the slot; false when nothing is running there. */
+  kill(role: SlotRole, detail?: string): boolean;
 }
 
 export type RunStatus = "completed" | "degraded" | "aborted" | "failed";
@@ -119,6 +144,26 @@ class SubtaskFailure extends Error {
     this.name = "SubtaskFailure";
   }
 }
+
+/** The slot's replacements ran out; the supervisor already traced `slot.exhausted`. */
+class SlotExhaustedError extends SubtaskFailure {
+  constructor(failureClass: FailureClass, message: string) {
+    super(failureClass, message);
+    this.name = "SlotExhaustedError";
+  }
+}
+
+/** The planner works outside the subtask DAG; its handoff still needs a subtask to name. */
+const PLAN_SUBTASK: Subtask = {
+  id: "plan",
+  title: "Plan the run",
+  description: "Decompose the brief into a subtask DAG.",
+  dependsOn: [],
+  roleHint: "planner",
+  output: { key: "plan" },
+  inputKeys: [],
+  status: "running",
+};
 
 const SETTLED: readonly SubtaskStatus[] = ["completed", "degraded", "failed"];
 const errText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
@@ -226,6 +271,7 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
   // -- shared run state ----------------------------------------------------
   const blackboard = new Blackboard({ runId, traceSink: sink, clock: now });
   const cache = new ToolCache();
+  const slotChaos = parseSlotChaos(chaosProfiles);
   const slots = new Map<SlotRole, Slot>();
   const subtasks = new Map<string, Subtask>();
   const ledgers = new Map<string, ToolLedger>();
@@ -242,6 +288,44 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     traceSink: sink,
     ...(options.clients ? { clients: options.clients } : {}),
   };
+  const supervisor = new SlotSupervisor({
+    config,
+    emit,
+    now,
+    executorAgentId: () => slots.get("executor")?.agentId,
+    budget: () => {
+      const b = meter.getBudgetCheckedPayload();
+      return {
+        stepsRemaining: Math.max(0, b.steps.max - b.steps.used),
+        usdRemaining: Math.max(0, b.usd.max - b.usd.used),
+        msRemaining: Math.max(0, b.ms.max - b.ms.used),
+      };
+    },
+    freshRouting: async (role, exclude) => {
+      try {
+        const narrowed = { ...config, agents: config.agents.filter((a) => !exclude.includes(a.id)) };
+        const routed = await routeTask(jev, { ...routeInput([role]), config: narrowed });
+        const found = routed.assignments.find((a) => a.role === role);
+        return found ? { agentId: found.agentId } : null;
+      } catch {
+        return null;
+      }
+    },
+    ...(options.attemptTimeoutMs !== undefined
+      ? { attemptTimeoutMs: options.attemptTimeoutMs }
+      : {}),
+    ...(options.nudgeGraceMs !== undefined ? { nudgeGraceMs: options.nudgeGraceMs } : {}),
+    ...(options.stallCheckIntervalMs !== undefined
+      ? { checkIntervalMs: options.stallCheckIntervalMs }
+      : {}),
+  });
+  const handle: RunHandle = { runId, kill: (role, detail) => supervisor.kill(role, detail) };
+  const stopKillWatch =
+    options.killChannel === false
+      ? () => {}
+      : watchKillRequests(options.runsDir ?? "runs", runId, (req) =>
+          supervisor.kill(req.role, req.detail ?? "killed by the operator"),
+        );
   let currentPlan: Plan | null = null;
   let failureReplans = 0;
   let rejectionReplans = 0;
@@ -258,6 +342,7 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     report?: BlackboardEntry,
   ): Promise<RunResult> => {
     clearTimeout(wallTimer);
+    stopKillWatch();
     emitBudget();
     emit({
       kind: "run.finished",
@@ -342,6 +427,7 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     }
   }
   makeSlots(routePlan);
+  options.onReady?.(handle);
 
   /** Slots follow the roles the plan names; a role nobody routed yet is routed on first use. */
   const ensureSlot = async (role: SlotRole): Promise<Slot> => {
@@ -355,11 +441,21 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
   };
 
   // -- running an agent on a slot ------------------------------------------
+  /** What supervision needs to see of an attempt: its heartbeat clock and its accumulated trail. */
+  interface AttemptContext {
+    watch: AttemptWatch;
+    log: AttemptLog;
+    handoff?: Handoff | undefined;
+  }
+
   const agentEventHandler =
-    (slot: Slot, subtaskId: string | undefined, signal: AbortSignal) =>
+    (slot: Slot, subtaskId: string | undefined, signal: AbortSignal, attempt?: AttemptContext) =>
     (event: AgentEvent): void => {
-      // Work abandoned by a stop keeps running in the background; it no longer counts or traces.
+      // Work abandoned by a stop or a takeover keeps running in the background; it no longer
+      // counts or traces.
       if (signal.aborted) return;
+      attempt?.watch.beat();
+      attempt?.log.observe(event);
       slot.beat(subtaskId);
       const who = {
         role: slot.role,
@@ -394,6 +490,7 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     effort: Effort,
     ledger: ToolLedger,
     signal: AbortSignal,
+    attempt?: AttemptContext,
   ): RoleDeps => {
     const agent = agents.get(slot.agentId);
     const provider = agent ? providers.get(agent.providerId) : undefined;
@@ -410,13 +507,22 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
       approvalGate,
       run: guardedRun,
     });
-    const adapter = options.adapters.create({ agent, provider, executeTool, chaos: agentChaos });
+    const created = options.adapters.create({ agent, provider, executeTool, chaos: NO_CHAOS });
+    // Agent chaos is applied here, once, for every adapter kind (plan.md 2.6).
+    const adapter = hasSlotChaos(slotChaos)
+      ? chaosAdapter(created, {
+          chaos: slotChaos,
+          providerId: provider.id,
+          isFirstAgent: () => slot.replaced.length === 0,
+        })
+      : created;
     return {
       agent: { agentId: agent.id, displayName: agent.displayName, adapter },
       ledger,
       signal,
       effort,
-      onEvent: agentEventHandler(slot, subtaskId, signal),
+      onEvent: agentEventHandler(slot, subtaskId, signal, attempt),
+      ...(attempt?.handoff ? { handoff: attempt.handoff } : {}),
     };
   };
 
@@ -427,14 +533,17 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     effort: Effort,
     ledger: ToolLedger,
     fn: (deps: RoleDeps) => Promise<T>,
+    attempt: AttemptContext,
   ): Promise<T> => {
     if (runSignal.aborted || !meter.canExecuteTurn()) throw new StopError();
     slot.start(subtaskId, effort);
     meter.recordStep();
     reserveCheck();
-    const deps = buildDeps(slot, subtaskId, effort, ledger, runSignal);
+    // The attempt ends on a stop, or on the supervisor's stall, timeout and kill.
+    const attemptSignal = AbortSignal.any([runSignal, attempt.watch.signal]);
+    const deps = buildDeps(slot, subtaskId, effort, ledger, attemptSignal, attempt);
     try {
-      return await raceAbort(fn(deps), runSignal);
+      return await raceAbort(fn(deps), attemptSignal);
     } catch (err) {
       if (runSignal.aborted) throw new StopError();
       throw err;
@@ -460,6 +569,8 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
         return await run();
       } catch (err) {
         if (err instanceof StopError || runSignal.aborted) throw new StopError();
+        // Ended by the supervisor (stall, timeout, kill): retrying the same agent is pointless.
+        if (err instanceof AttemptAborted) throw err;
         const failure = await classifyFailure(err);
         if (failure.failureClass === "transient" && transient < 2) transient += 1;
         else if (failure.failureClass === "malformed" && malformed < 1) malformed += 1;
@@ -468,8 +579,88 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     }
   };
 
+  /**
+   * Runs work on the slot's agent under supervision (plan.md 2). When the attempt fails for good
+   * (error after retries, stall, timeout, operator kill) the supervisor replaces the agent and the
+   * same work continues on the replacement with a handoff, until it succeeds or the slot is
+   * exhausted. Rejections are handled by the caller, which owns the critic loop.
+   */
+  const supervised = async <T>(
+    slot: Slot,
+    subtask: Subtask,
+    effortIn: Effort,
+    ledger: ToolLedger,
+    log: AttemptLog,
+    work: (deps: RoleDeps) => Promise<T>,
+    initialHandoff?: Handoff,
+  ): Promise<T> => {
+    let effort = effortIn;
+    let handoff = initialHandoff;
+    const subtaskId = subtask.id === PLAN_SUBTASK.id ? undefined : subtask.id;
+    for (;;) {
+      const attemptAgentId = slot.agentId;
+      let reason: FailureReason;
+      let classification: FailureClass | undefined;
+      let errorText: string | undefined;
+      let detectedAt = now();
+      let lastBeatAt = detectedAt;
+      if (supervisor.providerDown(attemptAgentId)) {
+        const providerId = agents.get(attemptAgentId)?.providerId ?? "unknown";
+        errorText = `provider ${providerId} is down (recent availability failure); not started`;
+        reason = { kind: "failed", detail: errorText };
+      } else {
+        const watch = supervisor.watch(slot, { subtaskId });
+        try {
+          return await withRetries(() =>
+            invoke(slot, subtaskId, effort, ledger, work, { watch, log, handoff }),
+          );
+        } catch (err) {
+          if (err instanceof StopError || runSignal.aborted) throw new StopError();
+          const cause = watch.cause();
+          lastBeatAt = watch.lastBeatAt();
+          if (cause) {
+            detectedAt = cause.at;
+            reason = {
+              kind:
+                cause.kind === "operator_kill"
+                  ? "operator_kill"
+                  : cause.kind === "stalled"
+                    ? "stalled"
+                    : "failed",
+              detail: cause.detail,
+            };
+          } else {
+            const failure = err instanceof SubtaskFailure ? err : await classifyFailure(err);
+            reason = { kind: "failed", detail: failure.message };
+            classification = failure.failureClass;
+            errorText = failure.message;
+          }
+        } finally {
+          watch.stop();
+        }
+      }
+      const takeover = await supervisor.takeover({
+        slot,
+        attemptAgentId,
+        subtask,
+        reason,
+        classification,
+        ...(errorText !== undefined ? { errorText } : {}),
+        lastBeatAt,
+        detectedAt,
+        log,
+        inputs: blackboard.getInputs(subtask.inputKeys, { allowMissing: true }),
+        effort,
+      });
+      if (!takeover) throw new SlotExhaustedError(classification ?? "permanent", reason.detail);
+      handoff = takeover.handoff;
+      effort = takeover.effort ?? effort;
+    }
+  };
+
   // -- planning ------------------------------------------------------------
   const plannerSlot = slots.get("planner")!;
+  const plannerLog = new AttemptLog();
   const plannerLedger = new ToolLedger();
   const adoptPlan = (plan: Plan): void => {
     subtasks.clear();
@@ -478,10 +669,13 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     emit({ kind: "plan.created", subtasks: plan.subtasks });
   };
   try {
-    const plan = await withRetries(() =>
-      invoke(plannerSlot, undefined, "medium", plannerLedger, (deps) =>
-        planBrief(deps, { brief, repoUrl: task.repoUrl }),
-      ),
+    const plan = await supervised(
+      plannerSlot,
+      PLAN_SUBTASK,
+      "medium",
+      plannerLedger,
+      plannerLog,
+      (deps) => planBrief(deps, { brief, repoUrl: task.repoUrl }),
     );
     plannerSlot.complete(undefined);
     adoptPlan(plan);
@@ -491,7 +685,9 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
       err instanceof PlanValidationError || err instanceof SubtaskFailure
         ? err.message
         : errText(err);
-    plannerSlot.fail(undefined, { kind: "failed", detail: reason });
+    if (!(err instanceof SlotExhaustedError)) {
+      plannerSlot.fail(undefined, { kind: "failed", detail: reason });
+    }
     return finish("failed", `planning failed: ${reason}`);
   }
 
@@ -515,8 +711,13 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
   const tryReplan = async (subtask: Subtask, reason: string): Promise<boolean> => {
     emit({ kind: "replan.triggered", subtaskId: subtask.id, reason });
     try {
-      const merged = await withRetries(() =>
-        invoke(plannerSlot, undefined, "high", plannerLedger, (deps) =>
+      const merged = await supervised(
+        plannerSlot,
+        PLAN_SUBTASK,
+        "high",
+        plannerLedger,
+        plannerLog,
+        (deps) =>
           replan(deps, {
             brief,
             repoUrl: task.repoUrl,
@@ -525,14 +726,15 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
             reason,
             blackboard: blackboard.getAll(),
           }),
-        ),
       );
       plannerSlot.complete(undefined);
       adoptPlan(merged);
       return true;
     } catch (err) {
       if (err instanceof StopError) throw err;
-      plannerSlot.fail(undefined, { kind: "failed", detail: errText(err) });
+      if (!(err instanceof SlotExhaustedError)) {
+        plannerSlot.fail(undefined, { kind: "failed", detail: errText(err) });
+      }
       return false;
     }
   };
@@ -596,73 +798,114 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     }
     const slot = await ensureSlot(role);
     const criticSlot = await ensureSlot("critic");
-    const inputs = blackboard.getInputs(subtask.inputKeys, { allowMissing: true });
+    const producerLog = new AttemptLog();
+    const criticLog = new AttemptLog();
     let unreviewed: string | null = null;
+    let handoff: Handoff | undefined;
 
-    const outcome = await produceWithReview({
-      produce: (revision) =>
-        withRetries(() =>
-          invoke(slot, subtask.id, effort, ledger, (deps) =>
-            handler.produce(deps, { subtask, inputs, brief, ...(revision ? { revision } : {}) }),
+    for (;;) {
+      const outcome = await produceWithReview({
+        produce: (revision) =>
+          supervised(
+            slot,
+            subtask,
+            effort,
+            ledger,
+            producerLog,
+            (deps) =>
+              handler.produce(deps, {
+                subtask,
+                inputs: blackboard.getInputs(subtask.inputKeys, { allowMissing: true }),
+                brief,
+                ...(revision ? { revision } : {}),
+              }),
+            handoff,
           ),
-        ),
-      review: async (draft, attempt) => {
-        if (handler.reviewed === false) return { verdict: "accepted" as const, findings: [] };
-        try {
-          const verdict = await withRetries(() =>
-            invoke(criticSlot, subtask.id, "medium", ledger, (deps) =>
-              reviewDraft(
-                { ...deps, jev, blackboard, ledger, emit: (e) => emit(e as EventBody) },
-                {
-                  subtask,
-                  draft,
-                  producer: { role: role as "researcher", agentId: slot.agentId },
-                  attempt,
-                },
-              ),
-            ),
-          );
-          criticSlot.complete(subtask.id);
-          return verdict;
-        } catch (err) {
-          if (err instanceof StopError) throw err;
-          const detail = errText(err);
-          criticSlot.fail(subtask.id, { kind: "failed", detail });
-          unreviewed = `unreviewed: the critic failed (${detail})`;
-          return { verdict: "accepted" as const, findings: [] };
-        }
-      },
-      commit: (draft) =>
-        commitDraft(
-          blackboard,
-          subtask,
-          { role, agentId: slot.agentId },
-          unreviewed
-            ? { ...draft, status: "degraded", degradedReason: draft.degradedReason ?? unreviewed }
-            : draft,
-        ),
-    });
+        review: async (draft, attempt) => {
+          if (handler.reviewed === false) return { verdict: "accepted" as const, findings: [] };
+          try {
+            const verdict = await supervised(
+              criticSlot,
+              subtask,
+              "medium",
+              ledger,
+              criticLog,
+              (deps) =>
+                reviewDraft(
+                  { ...deps, jev, blackboard, ledger, emit: (e) => emit(e as EventBody) },
+                  {
+                    subtask,
+                    draft,
+                    producer: { role: role as "researcher", agentId: slot.agentId },
+                    attempt,
+                  },
+                ),
+            );
+            criticSlot.complete(subtask.id);
+            return verdict;
+          } catch (err) {
+            if (err instanceof StopError) throw err;
+            const detail = errText(err);
+            // An exhausted critic slot was already traced by the supervisor.
+            if (!(err instanceof SlotExhaustedError)) {
+              criticSlot.fail(subtask.id, { kind: "failed", detail });
+            }
+            unreviewed = `unreviewed: the critic failed (${detail})`;
+            return { verdict: "accepted" as const, findings: [] };
+          }
+        },
+        commit: (draft) =>
+          commitDraft(
+            blackboard,
+            subtask,
+            { role, agentId: slot.agentId },
+            unreviewed
+              ? { ...draft, status: "degraded", degradedReason: draft.degradedReason ?? unreviewed }
+              : draft,
+          ),
+      });
 
-    if (outcome.status === "accepted") {
-      slot.complete(subtask.id);
-      setStatus(subtask.id, outcome.entry.status === "degraded" ? "degraded" : "completed");
-      return;
-    }
-    slot.reject(subtask.id, outcome.rejections, outcome.findings);
-    const request = outcome.findings.find((f) => f.requestedTask);
-    const reason = `critic rejected the output ${outcome.rejections} times`;
-    if (request?.requestedTask && rejectionReplans < (options.maxRejectionReplans ?? 1)) {
-      rejectionReplans += 1;
-      if (
-        await tryReplan(
-          subtask,
-          `${reason}; requested task: ${request.requestedTask.title} - ${request.requestedTask.description}`,
-        )
-      ) {
+      if (outcome.status === "accepted") {
+        slot.complete(subtask.id);
+        setStatus(subtask.id, outcome.entry.status === "degraded" ? "degraded" : "completed");
         return;
       }
+      slot.reject(subtask.id, outcome.rejections, outcome.findings);
+      const request = outcome.findings.find((f) => f.requestedTask);
+      const reason = `critic rejected the output ${outcome.rejections} times`;
+      if (request?.requestedTask && rejectionReplans < (options.maxRejectionReplans ?? 1)) {
+        rejectionReplans += 1;
+        if (
+          await tryReplan(
+            subtask,
+            `${reason}; requested task: ${request.requestedTask.title} - ${request.requestedTask.description}`,
+          )
+        ) {
+          return;
+        }
+      }
+      // Quality failure: the next standby, of an equal or higher tier, takes the subtask over.
+      const takeover = await supervisor.takeover({
+        slot,
+        attemptAgentId: slot.agentId,
+        subtask,
+        reason: { kind: "rejected", detail: reason },
+        alreadySignalled: true,
+        lastBeatAt: slot.lastHeartbeatAt,
+        detectedAt: now(),
+        log: producerLog,
+        inputs: blackboard.getInputs(subtask.inputKeys, { allowMissing: true }),
+        criticFindings: outcome.findings,
+        partialNotes: `Rejected draft: ${JSON.stringify(outcome.lastDraft.value) ?? "null"}`,
+        effort,
+      });
+      if (!takeover) {
+        await failSubtask(subtask, role, slot.agentId, `${reason}; no replacement is left`, true);
+        return;
+      }
+      handoff = takeover.handoff;
+      effort = takeover.effort ?? effort;
     }
-    await failSubtask(subtask, role, slot.agentId, reason, true);
   };
 
   /** Permanent failure: one replan if anything depends on it, otherwise a degraded entry. */
@@ -696,7 +939,10 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
       const role = subtask.roleHint;
       const slot = slots.get(role);
       const failure = err instanceof SubtaskFailure ? err : await classifyFailure(err);
-      slot?.fail(subtask.id, { kind: "failed", detail: failure.message }, failure.failureClass);
+      // An exhausted slot was already failed and traced by the supervisor.
+      if (!(failure instanceof SlotExhaustedError)) {
+        slot?.fail(subtask.id, { kind: "failed", detail: failure.message }, failure.failureClass);
+      }
       const agentId = slot?.agentId ?? "engine";
       if (failure.failureClass === "not_found") {
         writeDegraded(subtask, role, agentId, failure.message);
