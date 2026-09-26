@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1234567,
+    "tag_name": "4.18.2",
+    "name": "4.18.2",
+    "body": "## 4.18.2 (2022-10-08)\n\n* Fix path traversal vulnerability in send dependency\n* Update qs to 6.11.0\n* Security fixes for body-parser",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-10-08T18:00:00Z",
+    "html_url": "https://github.com/expressjs/express/releases/tag/4.18.2"
+  },
+  {
+    "id": 1234566,
+    "tag_name": "4.18.1",
+    "name": "4.18.1",
+    "body": "## 4.18.1 (2022-04-29)\n\n* Update cookie to 0.5.0\n* Fix query parser option forwarding",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-04-29T12:00:00Z",
+    "html_url": "https://github.com/expressjs/express/releases/tag/4.18.1"
+  }
+]

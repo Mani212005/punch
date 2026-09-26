@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "vulns": [
+        {
+          "id": "GHSA-hrpp-h998-j3pp",
+          "summary": "qs prototype pollution",
+          "aliases": ["CVE-2022-24999"]
+        }
+      ]
+    },
+    {
+      "vulns": []
+    }
+  ]
+}
