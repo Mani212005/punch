@@ -92,6 +92,37 @@ export function buildProgram(): Command {
       if (result.status === "failed") process.exitCode = 1;
     });
   program
+    .command("bench")
+    .description("run a fixture or repo N times and report measured cost, latency and takeovers")
+    .argument("<target>", "GitHub repository URL, or a fixture directory to replay offline")
+    .option("--runs <n>", "number of repetitions", "3")
+    .option(
+      "--chaos <profile>",
+      "chaos profile, repeatable (tool:<name>:500|hang|truncate|empty, provider-down:<id>, rate-limit:<id>, stall|timeout|garbage|hallucinate:<role>, kill-after:<role>:<n>)",
+      collect,
+      [],
+    )
+    .option("-c, --config <path>", "path to config file")
+    .option("--runs-dir <dir>", "directory holding runs/<runId>")
+    .option("--unattended", "auto-deny irreversible actions instead of asking")
+    .option("--budget-usd <usd>", "spend cap in USD for each run", Number)
+    .option("--json", "print the summary as JSON instead of a markdown table")
+    .action(async (target: string, options) => {
+      const { benchCommand } = await import("./bench.js");
+      const { renderBenchMarkdown } = await import("@punch/core");
+      const runs = Number(options.runs);
+      const summary = await benchCommand(target, {
+        runs,
+        chaos: options.chaos,
+        config: options.config,
+        runsDir: options.runsDir,
+        unattended: options.unattended,
+        budgetUsd: options.budgetUsd,
+      });
+      if (options.json) console.log(JSON.stringify(summary, null, 2));
+      else console.log(renderBenchMarkdown(summary));
+    });
+  program
     .command("kill")
     .description("operator kill of the agent in a slot (demo lever)")
     .argument("<runId>")
