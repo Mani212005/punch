@@ -106,6 +106,21 @@ describe("handoff packet (plan.md 2.4)", () => {
     expect(handoffPrompt(h)).toContain("The critic rejected");
   });
 
+  it("says there are no cached results when the predecessor used its own tools (plan.md 2.7)", () => {
+    const h = buildHandoff({
+      subtask,
+      reason: { kind: "failed", detail: "crashed" },
+      predecessor: { agentId: "cli", displayName: "CLI", turnsUsed: 1, usdUsed: 0 },
+      inputs: {},
+      log: new AttemptLog(),
+      budget: { stepsRemaining: 0, usdRemaining: 0, msRemaining: 0 },
+      now: 0,
+    });
+    expect(h.cachedToolResults).toEqual([]);
+    expect(handoffPrompt(h)).toContain("no cached results (previous agent used its own tools)");
+    expect(handoffPrompt(h)).not.toContain("return instantly from the run cache");
+  });
+
   it("filesInspectedBy ignores non-file tools", () => {
     expect(
       filesInspectedBy([{ callId: "x", tool: "osv_query", input: { path: "nope" }, ok: true }]),

@@ -165,11 +165,17 @@ export function describeRecovered(handoff: Handoff): string {
 
 /** Instructions that go with the handoff so the replacement continues the same subtask. */
 export function handoffPrompt(handoff: Handoff): string {
+  // Plan.md 2.7: a CLI predecessor's internal tool calls are opaque to the cache, so the handoff
+  // carries no cached tool results. Say so plainly instead of promising cache reuse.
+  const cacheLine =
+    handoff.cachedToolResults.length > 0
+      ? `Already done and available in inputs.handoff: ${describeRecovered(handoff)}. Identical tool calls return instantly from the run cache; do not redo work that is already recorded.`
+      : `no cached results (previous agent used its own tools). Re-derive what you need from inputs.handoff (inputs, partial notes, evidence records, reason); do not assume earlier tool output is available.`;
   return [
     "",
     `TAKEOVER. You are replacing ${handoff.predecessor.agentId}, which ${handoff.reason.kind === "operator_kill" ? "was killed by the operator" : handoff.reason.kind}: ${handoff.reason.detail}`,
     "Continue the SAME subtask and write the SAME output key with the SAME schema. Do not restart the investigation.",
-    `Already done and available in inputs.handoff: ${describeRecovered(handoff)}. Identical tool calls return instantly from the run cache; do not redo work that is already recorded.`,
+    cacheLine,
     handoff.partialNotes ? `The previous agent's last notes: ${handoff.partialNotes}` : "",
     handoff.criticFindings
       ? `The critic rejected the previous output: ${JSON.stringify(handoff.criticFindings)}`
