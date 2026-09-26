@@ -204,11 +204,26 @@ describe("takeover", () => {
     const s = setup();
     s.slot.start("s1");
     const log = new AttemptLog();
-    log.observe({ type: "tool_call", callId: "c1", tool: "github_get_contents", input: { path: "a.json" } });
-    log.observe({ type: "tool_result", callId: "c1", tool: "github_get_contents", ok: true, output: { x: 1 } });
+    log.observe({
+      type: "tool_call",
+      callId: "c1",
+      tool: "github_get_contents",
+      input: { path: "a.json" },
+    });
+    log.observe({
+      type: "tool_result",
+      callId: "c1",
+      tool: "github_get_contents",
+      ok: true,
+      output: { x: 1 },
+    });
     log.observe({ type: "text", text: "halfway" });
     const t = await s.supervisor.takeover(
-      takeoverRequest(s, { log, reason: { kind: "operator_kill", detail: "kill" }, effort: "medium" }),
+      takeoverRequest(s, {
+        log,
+        reason: { kind: "operator_kill", detail: "kill" },
+        effort: "medium",
+      }),
     );
     expect(t).toMatchObject({ agentId: "b", effort: "high", adopted: false });
     expect(t!.handoff).toMatchObject({
@@ -250,7 +265,9 @@ describe("takeover", () => {
   it("an agent-level failure keeps same-provider standbys", async () => {
     const s = setup();
     s.slot.start("s1");
-    const t = await s.supervisor.takeover(takeoverRequest(s, { errorText: "agent process crashed" }));
+    const t = await s.supervisor.takeover(
+      takeoverRequest(s, { errorText: "agent process crashed" }),
+    );
     expect(t!.agentId).toBe("b");
   });
 
@@ -309,7 +326,13 @@ describe("takeover", () => {
 
   it("uses fresh routing only when the standby list is empty", async () => {
     const s = setup();
-    const solo = new Slot({ role: "researcher", agentId: "a", provenance: "jev", standby: [], emit: () => {} });
+    const solo = new Slot({
+      role: "researcher",
+      agentId: "a",
+      provenance: "jev",
+      standby: [],
+      emit: () => {},
+    });
     solo.start("s1");
     const fresh = vi.fn().mockResolvedValue({ agentId: "g", probability: 0.6 });
     const sup = new SlotSupervisor({
@@ -405,10 +428,17 @@ describe("slot chaos", () => {
     });
     const collect = async () => {
       const out = [];
-      for await (const e of wrapped.run({ role: "researcher", signal: new AbortController().signal } as never)) out.push(e);
+      for await (const e of wrapped.run({
+        role: "researcher",
+        signal: new AbortController().signal,
+      } as never))
+        out.push(e);
       return out;
     };
-    expect((await collect())[0]).toMatchObject({ type: "result", output: expect.stringContaining("chaos") });
+    expect((await collect())[0]).toMatchObject({
+      type: "result",
+      output: expect.stringContaining("chaos"),
+    });
     first = false;
     expect((await collect())[0]).toMatchObject({ output: { value: 1 } });
   });

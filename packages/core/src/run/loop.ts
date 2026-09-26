@@ -13,7 +13,7 @@ import type {
   SubtaskStatus,
   TraceEvent,
 } from "@punch/shared";
-import { NO_CHAOS, parseAgentChaos } from "../adapters/agent.js";
+import { NO_CHAOS } from "../adapters/agent.js";
 import { selectApprovalGate, type RunApprovalOptions } from "../approval.js";
 import { Blackboard } from "../blackboard.js";
 import { BudgetMeter, type BudgetExceededReason } from "../budget.js";
@@ -38,11 +38,7 @@ import { routeSubtask, routeTask, type RoutePlan, type RouteEvent } from "../rou
 import { chaosAdapter, hasSlotChaos, parseSlotChaos } from "../slots/chaos.js";
 import { watchKillRequests } from "../slots/control.js";
 import { AttemptLog } from "../slots/handoff.js";
-import {
-  AttemptAborted,
-  SlotSupervisor,
-  type AttemptWatch,
-} from "../slots/supervisor.js";
+import { AttemptAborted, SlotSupervisor, type AttemptWatch } from "../slots/supervisor.js";
 import { ToolCache } from "../tools/cache.js";
 import { parseChaosProfile } from "../tools/chaos.js";
 import type { ToolExecutionContext } from "../tools/registry.js";
@@ -199,7 +195,6 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
   };
   const chaosProfiles = options.chaos ?? [];
   const toolChaos = parseChaosProfile(chaosProfiles);
-  const agentChaos = chaosProfiles.length > 0 ? parseAgentChaos(toolChaos.raw) : NO_CHAOS;
 
   // -- trace ---------------------------------------------------------------
   const writer = new TraceWriter({
@@ -303,7 +298,10 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     },
     freshRouting: async (role, exclude) => {
       try {
-        const narrowed = { ...config, agents: config.agents.filter((a) => !exclude.includes(a.id)) };
+        const narrowed = {
+          ...config,
+          agents: config.agents.filter((a) => !exclude.includes(a.id)),
+        };
         const routed = await routeTask(jev, { ...routeInput([role]), config: narrowed });
         const found = routed.assignments.find((a) => a.role === role);
         return found ? { agentId: found.agentId } : null;

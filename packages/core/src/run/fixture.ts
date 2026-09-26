@@ -173,7 +173,9 @@ function createFixtureJevTransport(fixture: RunFixture): JevTransport {
       if (ids.every((id) => id.startsWith("claim_"))) {
         // A claim whose cited tool call does not exist in the trace is not supported.
         const score = (id: string): number =>
-          JSON.stringify(request.questions[id] ?? "").includes("exists in the trace") ? 0.05 : support;
+          JSON.stringify(request.questions[id] ?? "").includes("exists in the trace")
+            ? 0.05
+            : support;
         return {
           model: "jev-fixture",
           answers: Object.fromEntries(ids.map((id) => [id, { type: "noul", noul: score(id) }])),

@@ -11,11 +11,7 @@ export interface KillCommandOptions {
  * running engine through the run's control directory; the supervisor fails the slot with reason
  * `operator_kill` and a replacement takes over.
  */
-export function killCommand(
-  runId: string,
-  slot: string,
-  options: KillCommandOptions = {},
-): string {
+export function killCommand(runId: string, slot: string, options: KillCommandOptions = {}): string {
   const role = SlotRole.safeParse(slot);
   if (!role.success) {
     throw new Error(`unknown slot "${slot}"; expected one of ${SlotRole.options.join(", ")}`);

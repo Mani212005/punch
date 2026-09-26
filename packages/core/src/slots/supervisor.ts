@@ -12,11 +12,7 @@ import type {
 } from "@punch/shared";
 import { ProviderHealth, selectReplacement, type Replacement } from "../router/standby.js";
 import type { EmitEvent, Slot } from "../run/slot.js";
-import {
-  buildHandoff,
-  summarizeHandoff,
-  type AttemptLog,
-} from "./handoff.js";
+import { buildHandoff, summarizeHandoff, type AttemptLog } from "./handoff.js";
 import { isCliKind, isProviderLevelFailure } from "./replacement.js";
 
 /** Why an attempt was ended from outside: silence, the wall-clock cap, or the operator. */
@@ -146,7 +142,6 @@ export class SlotSupervisor {
     const agent = this.agents.get(agentId);
     return agent ? this.health.isDown(agent.providerId, this.now()) : false;
   }
-
 
   // -- detection ---------------------------------------------------------
 
@@ -354,7 +349,7 @@ export class SlotSupervisor {
       ...(this.options.executorAgentId?.()
         ? { executorAgentId: this.options.executorAgentId() as string }
         : {}),
-      ...(request.effort ?? slot.assignment.effort
+      ...((request.effort ?? slot.assignment.effort)
         ? { failedEffort: (request.effort ?? slot.assignment.effort) as Effort }
         : {}),
       supportsEffort: (agent) => !isCliKind(this.providerOf(agent.id)?.kind),

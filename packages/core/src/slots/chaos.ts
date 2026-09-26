@@ -109,7 +109,8 @@ function hallucinate(output: unknown): unknown {
     evidence: [
       ...value.evidence,
       {
-        claim: "The affected package was fixed in version 99.0.0 (per the maintainers' security bulletin).",
+        claim:
+          "The affected package was fixed in version 99.0.0 (per the maintainers' security bulletin).",
         source: "osv_query",
         toolCallId: "call-that-never-happened",
         quote: "fixed: 99.0.0",

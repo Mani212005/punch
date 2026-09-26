@@ -27,7 +27,9 @@ function logWithWork(): AttemptLog {
     log.observe({ type: "tool_call", callId, tool, input });
     log.observe({ type: "tool_result", callId, tool, ok, output });
   };
-  call("c1", "github_get_contents", { owner: "o", repo: "r", path: "package.json" }, true, { a: 1 });
+  call("c1", "github_get_contents", { owner: "o", repo: "r", path: "package.json" }, true, {
+    a: 1,
+  });
   call("c2", "github_get_contents", { owner: "o", repo: "r", path: "lock.json" }, true, { b: 2 });
   call("c3", "osv_query", { package: "qs" }, true, { vulns: [] });
   call("c4", "npm_latest", { package: "qs" }, false, "boom");
@@ -59,7 +61,9 @@ describe("handoff packet (plan.md 2.4)", () => {
       "osv_query",
       "read_blackboard",
     ]);
-    expect(handoff.cachedToolResults[2]!.inputHash).toBe(computeInputHash("osv_query", { package: "qs" }));
+    expect(handoff.cachedToolResults[2]!.inputHash).toBe(
+      computeInputHash("osv_query", { package: "qs" }),
+    );
   });
 
   it("lists files read, evidence records and the last notes", () => {

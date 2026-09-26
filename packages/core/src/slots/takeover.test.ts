@@ -10,7 +10,10 @@ import { AdapterRegistry } from "../run/registry.js";
 import { parseTrace } from "../trace/writer.js";
 import { requestKill } from "./control.js";
 
-const FIXTURE = path.resolve(fileURLToPath(import.meta.url), "../../../../../fixtures/runs/takeover");
+const FIXTURE = path.resolve(
+  fileURLToPath(import.meta.url),
+  "../../../../../fixtures/runs/takeover",
+);
 const runsDir = fs.mkdtempSync(path.join(os.tmpdir(), "punch-takeover-"));
 afterAll(() => fs.rmSync(runsDir, { recursive: true, force: true }));
 
@@ -35,8 +38,6 @@ type Of<K extends TraceEvent["kind"]> = Extract<TraceEvent, { kind: K }>;
 const of = <K extends TraceEvent["kind"]>(r: RunResult, kind: K): Of<K>[] =>
   r.events.filter((e): e is Of<K> => e.kind === kind);
 const kinds = (r: RunResult) => r.events.map((e) => e.kind);
-const index = (r: RunResult, kind: TraceEvent["kind"], from = 0) =>
-  r.events.findIndex((e, i) => i >= from && e.kind === kind);
 
 function expectWellFormed(r: RunResult): void {
   expect(r.traceErrors).toEqual([]);
@@ -74,7 +75,8 @@ function expectResumed(r: RunResult, subtaskId: string): void {
   expect(h.evidenceRecordCount).toBeGreaterThan(0);
   const after = r.events.slice(r.events.indexOf(replaced) + 1);
   const results = after.filter(
-    (e): e is Of<"tool.result"> => e.kind === "tool.result" && e.callId.startsWith(`${subtaskId}-c`),
+    (e): e is Of<"tool.result"> =>
+      e.kind === "tool.result" && e.callId.startsWith(`${subtaskId}-c`),
   );
   expect(results.length).toBeGreaterThanOrEqual(h.cachedResultCount);
   for (const res of results.slice(0, h.cachedResultCount)) expect(res.cached).toBe(true);
@@ -153,9 +155,13 @@ describe("manual kill mid-subtask", () => {
 
     const researcher = r.slots.find((s) => s.role === "researcher")!;
     expect(researcher.agentId).toBe("gemini");
-    expect(researcher.replaced).toMatchObject([{ agentId: "opus", reason: { kind: "operator_kill" } }]);
+    expect(researcher.replaced).toMatchObject([
+      { agentId: "opus", reason: { kind: "operator_kill" } },
+    ]);
     // the replacement was started with a higher effort than the killed attempt
-    const starts = of(r, "agent.started").filter((e) => e.subtaskId === "s1" && e.role === "researcher");
+    const starts = of(r, "agent.started").filter(
+      (e) => e.subtaskId === "s1" && e.role === "researcher",
+    );
     expect(starts.map((e) => e.agentId)).toEqual(["opus", "gemini"]);
     expect(starts[1]!.effort).toBe("high");
   });
@@ -234,7 +240,9 @@ describe("the eight failure modes each recover with the handoff", () => {
     expectWellFormed(r);
     const { failed } = takeoverOf(r, "researcher", "s1");
     expect(failed.classification).toBe("malformed");
-    expect(of(r, "agent.started").filter((e) => e.subtaskId === "s1" && e.agentId === "opus")).toHaveLength(2);
+    expect(
+      of(r, "agent.started").filter((e) => e.subtaskId === "s1" && e.agentId === "opus"),
+    ).toHaveLength(2);
     expectResumed(r, "s1");
     expect(r.status).toBe("completed");
   });
@@ -274,23 +282,20 @@ describe("the eight failure modes each recover with the handoff", () => {
   });
 
   it("critic rejection picks an equal or higher cost tier", async () => {
-    const r = await run(
-      {},
-      (f) => {
-        // sonnet (medium) researches; gemini (low) is first in line but a lower tier
-        const role = f.jev.routeTask as { answers: Record<string, { probabilities: unknown }> };
-        role.answers["role_researcher"] = {
-          type: "choice",
-          choice: "sonnet",
-          confidence: 0.6,
-          probabilities: { sonnet: 0.6, gemini: 0.25, opus: 0.15 },
-        } as never;
-        f.agents.critic = {
-          reject: { s1: [{ claim: "inventory", problem: "not supported", severity: "blocker" }] },
-          rejectProducers: ["sonnet"],
-        };
-      },
-    );
+    const r = await run({}, (f) => {
+      // sonnet (medium) researches; gemini (low) is first in line but a lower tier
+      const role = f.jev.routeTask as { answers: Record<string, { probabilities: unknown }> };
+      role.answers["role_researcher"] = {
+        type: "choice",
+        choice: "sonnet",
+        confidence: 0.6,
+        probabilities: { sonnet: 0.6, gemini: 0.25, opus: 0.15 },
+      } as never;
+      f.agents.critic = {
+        reject: { s1: [{ claim: "inventory", problem: "not supported", severity: "blocker" }] },
+        rejectProducers: ["sonnet"],
+      };
+    });
     expectWellFormed(r);
     const { replacing } = takeoverOf(r, "researcher", "s1");
     expect(replacing.reason.kind).toBe("rejected");
@@ -383,10 +388,11 @@ describe("limits", () => {
     expectWellFormed(r);
     const s1 = <E extends { subtaskId?: string | undefined }>(e: E) => e.subtaskId === "s1";
     expect(of(r, "slot.failed").filter(s1)).toHaveLength(3);
-    expect(of(r, "slot.replacing").filter(s1).map((e) => e.replacementAgentId)).toEqual([
-      "gemini",
-      "sonnet",
-    ]);
+    expect(
+      of(r, "slot.replacing")
+        .filter(s1)
+        .map((e) => e.replacementAgentId),
+    ).toEqual(["gemini", "sonnet"]);
     expect(of(r, "slot.replaced").filter(s1)).toHaveLength(2);
     const exhausted = of(r, "slot.exhausted").filter(s1);
     expect(exhausted).toHaveLength(1);
@@ -413,7 +419,10 @@ describe("limits", () => {
 });
 
 describe("the committed takeover trace", () => {
-  const traceFile = path.resolve(fileURLToPath(import.meta.url), "../../../../../traces/takeover.jsonl");
+  const traceFile = path.resolve(
+    fileURLToPath(import.meta.url),
+    "../../../../../traces/takeover.jsonl",
+  );
 
   it("is a valid recorded run with the exact takeover sequence and matches the web copy", () => {
     const events = parseTrace(fs.readFileSync(traceFile, "utf-8"));
@@ -421,7 +430,10 @@ describe("the committed takeover trace", () => {
     expect(events.map((e) => e.seq)).toEqual(events.map((_, i) => i));
     expect(events.at(-1)).toMatchObject({ kind: "run.finished", status: "completed" });
     const seq = events
-      .filter((e) => e.kind === "slot.failed" || e.kind === "slot.replacing" || e.kind === "slot.replaced")
+      .filter(
+        (e) =>
+          e.kind === "slot.failed" || e.kind === "slot.replacing" || e.kind === "slot.replaced",
+      )
       .map((e) => e.kind);
     expect(seq).toEqual(["slot.failed", "slot.replacing", "slot.replaced"]);
     const replacing = events.find((e): e is Of<"slot.replacing"> => e.kind === "slot.replacing")!;
