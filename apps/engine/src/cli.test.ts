@@ -4,8 +4,6 @@ import { buildProgram, NotImplementedError } from "./cli.js";
 const cases: string[][] = [
   ["serve"],
   ["kill", "run1", "researcher"],
-  ["approve", "run1"],
-  ["deny", "run1"],
 ];
 
 describe("punch CLI stubs", () => {

@@ -64,14 +64,26 @@ export function buildProgram(): Command {
     .command("approve")
     .description("approve a pending irreversible action")
     .argument("<runId>")
-    .argument("[approvalId]")
-    .action(stub("approve"));
+    .argument("<approvalId>")
+    .action(async (runId, approvalId, _options) => {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const decisionFile = path.join("runs", runId, "approvals", `${approvalId}.decision.json`);
+      await fs.writeFile(decisionFile, JSON.stringify({ approved: true, decidedBy: "cli-approve" }), "utf-8");
+      console.log(`Approved run ${runId} action ${approvalId}`);
+    });
   program
     .command("deny")
     .description("deny a pending irreversible action")
     .argument("<runId>")
-    .argument("[approvalId]")
-    .action(stub("deny"));
+    .argument("<approvalId>")
+    .action(async (runId, approvalId, _options) => {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const decisionFile = path.join("runs", runId, "approvals", `${approvalId}.decision.json`);
+      await fs.writeFile(decisionFile, JSON.stringify({ approved: false, decidedBy: "cli-deny", reason: "denied via CLI command" }), "utf-8");
+      console.log(`Denied run ${runId} action ${approvalId}`);
+    });
 
   const config = program.command("config").description("inspect and check ~/.punch/config.json");
   config
