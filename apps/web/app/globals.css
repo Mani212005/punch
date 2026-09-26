@@ -1,0 +1,40 @@
+@import "./styles/tokens.css";
+@import "./styles/components.css";
+
+:root {
+  --bz-font-display:
+    var(--font-space-grotesk), "Space Grotesk", "Futura", "Helvetica Neue", Arial, sans-serif;
+  --bz-font-mono:
+    var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bz-paper);
+  color: var(--bz-ink);
+  font-family: var(--bz-font-display);
+  font-size: var(--bz-fs-body);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+main {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+@media (max-width: 900px) {
+  main {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 10px;
+  }
+}
