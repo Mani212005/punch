@@ -2,21 +2,12 @@ import type { AgentEvent } from "@punch/shared";
 import { describe, expect, it } from "vitest";
 import { parseAgentChaos } from "./agent.js";
 import { GeminiAdapter, type GeminiAdapterOptions } from "./gemini.js";
-import {
-  collect,
-  mockGemini,
-  runInput,
-  
-  type Turn,
-} from "./gemini.test-helpers.js";
+import { collect, mockGemini, runInput, type Turn } from "./gemini.test-helpers.js";
 import { WRITE_RESULT_TOOL } from "./gemini.js";
 
-const done = (events: AgentEvent[]) => events.filter(e => e.type === "done");
+const done = (events: AgentEvent[]) => events.filter((e) => e.type === "done");
 
-function adapter(
-  turns: Turn[],
-  overrides: Partial<GeminiAdapterOptions> = {},
-) {
+function adapter(turns: Turn[], overrides: Partial<GeminiAdapterOptions> = {}) {
   const mock = mockGemini(turns);
   const adapter = new GeminiAdapter({
     model: "gemini-2.0-flash",
@@ -36,7 +27,13 @@ describe("GeminiAdapter", () => {
         usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 20 },
       },
       {
-        functionCalls: [{ id: "call2", name: WRITE_RESULT_TOOL, args: { result: { findings: [{ package: "lodash", latest: "4.17.21" }] } } }],
+        functionCalls: [
+          {
+            id: "call2",
+            name: WRITE_RESULT_TOOL,
+            args: { result: { findings: [{ package: "lodash", latest: "4.17.21" }] } },
+          },
+        ],
         usageMetadata: { promptTokenCount: 150, candidatesTokenCount: 10 },
       },
     ];
@@ -57,17 +54,25 @@ describe("GeminiAdapter", () => {
 
     expect(done(events)).toEqual([{ type: "done", status: "ok" }]);
     expect(mock.requests).toHaveLength(2);
-    
+
     // Check effort level
     const firstRequest = mock.requests[0] as Record<string, unknown>;
     expect((firstRequest.config as { thinkingConfig?: unknown }).thinkingConfig).toBeUndefined(); // gemini-2.0-flash is not THINKING_CAPABLE by our regex
   });
 
   it("passes thinking config for thinking models", async () => {
-    const turns: Turn[] = [{
-      functionCalls: [{ id: "call2", name: WRITE_RESULT_TOOL, args: { result: { findings: [{ package: "lodash", latest: "4.17.21" }] } } }],
-      usageMetadata: { promptTokenCount: 150, candidatesTokenCount: 10 },
-    }];
+    const turns: Turn[] = [
+      {
+        functionCalls: [
+          {
+            id: "call2",
+            name: WRITE_RESULT_TOOL,
+            args: { result: { findings: [{ package: "lodash", latest: "4.17.21" }] } },
+          },
+        ],
+        usageMetadata: { promptTokenCount: 150, candidatesTokenCount: 10 },
+      },
+    ];
 
     const mock = mockGemini(turns);
     const a = new GeminiAdapter({
@@ -77,7 +82,9 @@ describe("GeminiAdapter", () => {
     });
     await collect(a.run(runInput({ effort: "high" })));
     const firstRequest = mock.requests[0] as Record<string, unknown>;
-    expect((firstRequest.config as { thinkingConfig?: unknown }).thinkingConfig).toEqual({ thinkingLevel: "high" });
+    expect((firstRequest.config as { thinkingConfig?: unknown }).thinkingConfig).toEqual({
+      thinkingLevel: "high",
+    });
   });
 
   it("fails terminally when the result is invalid twice", async () => {
@@ -95,7 +102,7 @@ describe("GeminiAdapter", () => {
 
   it("reports max_turns when the cap is hit without write_result", async () => {
     const toolTurn: Turn = {
-        functionCalls: [{ id: "call1", name: "npm_lookup", args: { name: "lodash" } }],
+      functionCalls: [{ id: "call1", name: "npm_lookup", args: { name: "lodash" } }],
     };
     const { adapter: a, mock } = adapter([toolTurn, toolTurn], {
       executeTool: async () => ({ name: "lodash", latest: "4.17.21" }),
@@ -116,7 +123,11 @@ describe("GeminiAdapter", () => {
   it("feeds tool errors back to the model and reports tool_result ok=false", async () => {
     const turns: Turn[] = [
       { functionCalls: [{ id: "call1", name: "npm_lookup", args: { name: "lodash" } }] },
-      { functionCalls: [{ id: "call2", name: WRITE_RESULT_TOOL, args: { result: { findings: [] } } }] }
+      {
+        functionCalls: [
+          { id: "call2", name: WRITE_RESULT_TOOL, args: { result: { findings: [] } } },
+        ],
+      },
     ];
     const { adapter: a } = adapter(turns, {
       executeTool: async () => {
@@ -143,7 +154,7 @@ describe("GeminiAdapter", () => {
     const controller = new AbortController();
     const { adapter: a } = adapter([{ hang: true }]);
     const started = Date.now();
-    
+
     // We pass abortSignal in GenerateContentConfig which our mock respects
     const pending = collect(a.run(runInput({ signal: controller.signal })));
     setTimeout(() => controller.abort(), 20);
@@ -166,15 +177,20 @@ describe("GeminiAdapter", () => {
     });
 
     it("provider-down for another provider is ignored", async () => {
-      const { adapter: a } = adapter([{ functionCalls: [{ name: WRITE_RESULT_TOOL, args: { result: { findings: [] } } }] }], {
-        chaos: parseAgentChaos(["provider-down:anthropic"]),
-      });
+      const { adapter: a } = adapter(
+        [{ functionCalls: [{ name: WRITE_RESULT_TOOL, args: { result: { findings: [] } } }] }],
+        {
+          chaos: parseAgentChaos(["provider-down:anthropic"]),
+        },
+      );
       const events = await collect(a.run(runInput()));
       expect(done(events)).toEqual([{ type: "done", status: "ok" }]);
     });
 
     it("garbage:<role> degrades to a terminal failure instead of crashing", async () => {
-      const good: Turn = { functionCalls: [{ name: WRITE_RESULT_TOOL, args: { result: { findings: [] } } }] };
+      const good: Turn = {
+        functionCalls: [{ name: WRITE_RESULT_TOOL, args: { result: { findings: [] } } }],
+      };
       const { adapter: a } = adapter([good, good], {
         chaos: parseAgentChaos(["garbage:researcher"]),
       });
@@ -188,9 +204,12 @@ describe("GeminiAdapter", () => {
     });
 
     it("kill-after:<role>:<n> ends the agent after n turns", async () => {
-      const { adapter: a } = adapter([{ functionCalls: [{ name: "npm_lookup", args: {} }] }], {
-        chaos: parseAgentChaos(["kill-after:researcher:1"]),
-      });
+      const { adapter: a, mock } = adapter(
+        [{ functionCalls: [{ name: "npm_lookup", args: {} }] }],
+        {
+          chaos: parseAgentChaos(["kill-after:researcher:1"]),
+        },
+      );
       const events = await collect(a.run(runInput()));
       expect(events.some((e) => e.type === "result")).toBe(false);
       expect(done(events)[0]).toMatchObject({ status: "error" });

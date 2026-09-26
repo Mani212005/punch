@@ -24,39 +24,47 @@ export function mockGemini(turns: Turn[]): MockGemini {
   let next = 0;
 
   const client = new GoogleGenAI({ apiKey: "test-key" }) as unknown as GoogleGenAI;
-  client.models = {
-    generateContent: async (params: unknown) => {
-      requests.push(params);
-      const turn = turns[next++];
-      if (!turn) throw new Error("mock: no more recorded turns");
-      if ("error" in turn) {
-        throw new Error(`${turn.error} ${turn.message}`);
-      }
-      return { ok: true };
-    },
-    generateContentStream: async function* (params: unknown) {
-      requests.push(params);
-      const turn = turns[next++];
-      if (!turn) throw new Error("mock: no more recorded turns");
-      if ("hang" in turn) {
-         await new Promise<void>((_resolve, reject) => {
-             const abort = (): void => reject(new DOMException("aborted", "AbortError"));
-             if (params.config?.abortSignal?.aborted) abort();
-             params.config?.abortSignal?.addEventListener("abort", abort);
-         });
-      }
-      if ("error" in turn) {
-        throw new Error(`${turn.error} ${turn.message}`);
-      }
+  Object.defineProperty(client, "models", {
+    value: {
+      generateContent: async (params: unknown) => {
+        requests.push(params as Record<string, unknown>);
+        const turn = turns[next++];
+        if (!turn) throw new Error("mock: no more recorded turns");
+        if ("error" in turn) {
+          throw new Error(`${turn.error} ${turn.message}`);
+        }
+        return { ok: true };
+      },
+      generateContentStream: async function* (params: unknown) {
+        requests.push(params as Record<string, unknown>);
+        const turn = turns[next++];
+        if (!turn) throw new Error("mock: no more recorded turns");
+        if ("hang" in turn) {
+          await new Promise<void>((_resolve, reject) => {
+            const abort = (): void => reject(new DOMException("aborted", "AbortError"));
+            const p = params as { config?: { abortSignal?: AbortSignal } };
+            if (p.config?.abortSignal?.aborted) abort();
+            p.config?.abortSignal?.addEventListener("abort", abort);
+          });
+        }
+        if ("error" in turn) {
+          throw new Error(`${turn.error} ${turn.message}`);
+        }
+        if ("hang" in turn) {
+          return; // already handled, but keeps TS happy
+        }
 
-      yield {
-        text: turn.text,
-        functionCalls: turn.functionCalls,
-        candidates: [{ finishReason: turn.finishReason ?? "STOP" }],
-        usageMetadata: turn.usageMetadata,
-      };
+        const msg = turn as FixtureMessage;
+
+        yield {
+          text: msg.text,
+          functionCalls: msg.functionCalls,
+          candidates: [{ finishReason: msg.finishReason ?? "STOP" }],
+          usageMetadata: msg.usageMetadata,
+        };
+      },
     },
-  };
+  });
 
   return { client, requests };
 }

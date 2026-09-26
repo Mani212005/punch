@@ -1,5 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
-import type { Content, FunctionCall, GenerateContentResponseUsageMetadata, Part, ThinkingLevel } from "@google/genai";
+import type {
+  Content,
+  FunctionCall,
+  GenerateContentResponseUsageMetadata,
+  Part,
+  ThinkingLevel,
+} from "@google/genai";
 
 import type {
   AdapterCapabilities,
@@ -7,7 +13,6 @@ import type {
   AgentAdapter,
   AgentEvent,
   Pricing,
-  
 } from "@punch/shared";
 import {
   AsyncQueue,
@@ -141,9 +146,10 @@ export class GeminiAdapter implements AgentAdapter {
 
     const signal = AbortSignal.any([input.signal, stop.signal]);
     const modern = THINKING_CAPABLE(model);
-    
+
     // Gemini effort mapping
-    const thinkingLevel = input.effort === "high" ? "high" : input.effort === "low" ? "low" : "medium";
+    const thinkingLevel =
+      input.effort === "high" ? "high" : input.effort === "low" ? "low" : "medium";
 
     const config = {
       systemInstruction: { role: "system", parts: [{ text: `${input.system}\n\n${PROTOCOL}` }] },
@@ -167,7 +173,7 @@ export class GeminiAdapter implements AgentAdapter {
 
         let currentText = "";
         const functionCalls: FunctionCall[] = [];
-        
+
         let usageMetadata: GenerateContentResponseUsageMetadata | undefined;
 
         for await (const chunk of runner) {
@@ -179,9 +185,6 @@ export class GeminiAdapter implements AgentAdapter {
           }
           if (chunk.functionCalls) {
             functionCalls.push(...chunk.functionCalls);
-          }
-          if (chunk.candidates?.[0]?.finishReason) {
-            ;
           }
           if (chunk.usageMetadata) {
             usageMetadata = chunk.usageMetadata;
@@ -226,23 +229,48 @@ export class GeminiAdapter implements AgentAdapter {
 
         const userParts: Part[] = [];
         for (const call of functionCalls) {
+          if (!call.name) continue;
           const callId = call.id ?? `call_${call.name}`;
           if (call.name === WRITE_RESULT_TOOL) {
             queue.push({ type: "tool_call", callId, tool: call.name, input: call.args });
             const verdict = gate.submit(garbage ? GARBAGE_RESULT : call.args?.result);
             if (verdict.ok) {
-              queue.push({ type: "tool_result", callId, tool: call.name, ok: true, output: "Result accepted." });
-              userParts.push({ functionResponse: { name: call.name, response: { result: "Result accepted." } } });
+              queue.push({
+                type: "tool_result",
+                callId,
+                tool: call.name,
+                ok: true,
+                output: "Result accepted.",
+              });
+              userParts.push({
+                functionResponse: { name: call.name, response: { result: "Result accepted." } },
+              });
               stop.abort();
             } else {
               if (verdict.terminal) {
-                 queue.push({ type: "tool_result", callId, tool: call.name, ok: false, output: verdict.error });
-                 userParts.push({ functionResponse: { name: call.name, response: { error: verdict.error } } });
-                 stop.abort();
+                queue.push({
+                  type: "tool_result",
+                  callId,
+                  tool: call.name,
+                  ok: false,
+                  output: verdict.error,
+                });
+                userParts.push({
+                  functionResponse: { name: call.name, response: { error: verdict.error } },
+                });
+                stop.abort();
               } else {
-                 const errStr = `Result rejected by schema validation: ${verdict.error}. Call ${WRITE_RESULT_TOOL} again with a corrected result.`;
-                 queue.push({ type: "tool_result", callId, tool: call.name, ok: false, output: errStr });
-                 userParts.push({ functionResponse: { name: call.name, response: { error: errStr } } });
+                const errStr = `Result rejected by schema validation: ${verdict.error}. Call ${WRITE_RESULT_TOOL} again with a corrected result.`;
+                queue.push({
+                  type: "tool_result",
+                  callId,
+                  tool: call.name,
+                  ok: false,
+                  output: errStr,
+                });
+                userParts.push({
+                  functionResponse: { name: call.name, response: { error: errStr } },
+                });
               }
             }
           } else {
@@ -250,7 +278,8 @@ export class GeminiAdapter implements AgentAdapter {
             if (spec) {
               queue.push({ type: "tool_call", callId, tool: call.name, input: call.args });
               try {
-                if (!this.options.executeTool) throw new Error(`no executor registered for tool ${call.name}`);
+                if (!this.options.executeTool)
+                  throw new Error(`no executor registered for tool ${call.name}`);
                 const output = await this.options.executeTool({
                   name: call.name,
                   input: call.args,
@@ -260,15 +289,25 @@ export class GeminiAdapter implements AgentAdapter {
                 queue.push({ type: "tool_result", callId, tool: call.name, ok: true, output });
                 userParts.push({ functionResponse: { name: call.name, response: { output } } });
               } catch (err) {
-                queue.push({ type: "tool_result", callId, tool: call.name, ok: false, output: errorMessage(err) });
-                userParts.push({ functionResponse: { name: call.name, response: { error: errorMessage(err) } } });
+                queue.push({
+                  type: "tool_result",
+                  callId,
+                  tool: call.name,
+                  ok: false,
+                  output: errorMessage(err),
+                });
+                userParts.push({
+                  functionResponse: { name: call.name, response: { error: errorMessage(err) } },
+                });
               }
             } else {
-              userParts.push({ functionResponse: { name: call.name, response: { error: "Unknown tool" } } });
+              userParts.push({
+                functionResponse: { name: call.name, response: { error: "Unknown tool" } },
+              });
             }
           }
         }
-        
+
         if (gate.accepted || gate.failure !== null) {
           break;
         }

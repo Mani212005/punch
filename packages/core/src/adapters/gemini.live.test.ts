@@ -16,8 +16,9 @@ describe.runIf(HAS_KEY)("Gemini live test", () => {
     const test = await a.test();
     expect(test.ok).toBe(true);
 
-    const executor = async ({ name, input }: { name: string; input: Record<string, unknown> }) => {
-      if (name === "npm_lookup") return { name: (input as Record<string, unknown>).name, latest: "4.17.21" };
+    const executor = async ({ name, input }: { name: string; input: unknown }) => {
+      if (name === "npm_lookup")
+        return { name: (input as Record<string, unknown>).name, latest: "4.17.21" };
       throw new Error(`unknown tool ${name}`);
     };
 
@@ -25,11 +26,13 @@ describe.runIf(HAS_KEY)("Gemini live test", () => {
 
     const events = await collect(a.run(runInput({ effort: "medium" })));
     const done = events.find((e) => e.type === "done");
-    
+
     expect(done).toMatchObject({ status: "ok" });
-    const result = events.find((e) => e.type === "result") as { output: { findings: { package: string, latest: string }[] } };
+    const result = events.find((e) => e.type === "result") as {
+      output: { findings: { package: string; latest: string }[] };
+    };
     expect(result.output.findings[0]).toMatchObject({ package: "lodash", latest: "4.17.21" });
-    
+
     const tools = events.filter((e) => e.type === "tool_call" && e.tool !== WRITE_RESULT_TOOL);
     expect(tools.length).toBeGreaterThan(0);
   }, 30000); // 30s timeout
