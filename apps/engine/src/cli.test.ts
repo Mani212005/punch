@@ -7,8 +7,6 @@ const cases: string[][] = [
   ["kill", "run1", "researcher"],
   ["approve", "run1"],
   ["deny", "run1"],
-  ["config", "validate"],
-  ["config", "test"],
 ];
 
 describe("punch CLI stubs", () => {

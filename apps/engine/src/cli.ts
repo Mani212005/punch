@@ -1,4 +1,6 @@
 import { Command } from "commander";
+import { getConfigPath, loadConfig, ConfigError } from "./config/index.js";
+import { TestAdapterRegistry } from "./config/registry.js";
 
 export class NotImplementedError extends Error {
   constructor(command: string) {
@@ -50,11 +52,56 @@ export function buildProgram(): Command {
   config
     .command("validate")
     .description("validate the config file")
-    .action(stub("config validate"));
+    .option("-c, --config <path>", "path to config file")
+    .action(async (options) => {
+      try {
+        const configPath = getConfigPath(options.config);
+        await loadConfig(configPath);
+        console.log("Config is valid");
+      } catch (err) {
+        if (err instanceof ConfigError) {
+          console.error(err.message);
+          err.fieldErrors.forEach((e) => console.error(`  ${e.path}: ${e.message}`));
+          process.exitCode = 1;
+        } else {
+          console.error(err instanceof Error ? err.message : String(err));
+          process.exitCode = 1;
+        }
+      }
+    });
+
   config
     .command("test")
     .description("test every configured agent and CLI")
-    .action(stub("config test"));
+    .option("-c, --config <path>", "path to config file")
+    .action(async (options) => {
+      try {
+        const configPath = getConfigPath(options.config);
+        const configData = await loadConfig(configPath);
+        const registry = new TestAdapterRegistry();
+
+        console.log("Testing CLI providers:");
+        const cliProviders = configData.providers.filter((p) => !("apiKeyEnv" in p));
+        for (const provider of cliProviders) {
+          const res = await registry.testCliProvider(provider.id, configData);
+          console.log(`  ${provider.id}: ${res.ok ? "OK" : `FAIL (${res.detail})`}`);
+        }
+
+        console.log("Testing agents:");
+        for (const agent of configData.agents) {
+          const res = await registry.testAgent(agent.id, configData);
+          console.log(`  ${agent.id}: ${res.ok ? "OK" : `FAIL (${res.detail})`}`);
+        }
+      } catch (err) {
+        if (err instanceof ConfigError) {
+          console.error(err.message);
+          err.fieldErrors.forEach((e) => console.error(`  ${e.path}: ${e.message}`));
+        } else {
+          console.error(err instanceof Error ? err.message : String(err));
+        }
+        process.exitCode = 1;
+      }
+    });
 
   return program;
 }
@@ -63,7 +110,14 @@ export async function main(argv: string[]): Promise<void> {
   try {
     await buildProgram().parseAsync(argv);
   } catch (err) {
-    console.error(err instanceof Error ? err.message : String(err));
-    process.exitCode = 1;
+    if (process.exitCode === undefined) {
+      process.exitCode = 1;
+    }
+    // Only print error if it wasn't already handled by a command action catching it
+    // Wait, commander doesn't throw if the action caught it and didn't rethrow.
+    // If we reach here, it's either an unhandled exception or commander error (like unknown option)
+    if (err instanceof Error && err.name !== "CommanderError" && !(err instanceof ConfigError)) {
+      console.error(err.message);
+    }
   }
 }

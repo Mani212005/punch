@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "providers": [
+    {
+      "id": "anthropic",
+      "kind": "anthropic",
+      "apiKeyEnv": "ANTHROPIC_API_KEY"
+    },
+    {
+      "id": "antigravity",
+      "kind": "antigravity"
+    }
+  ],
+  "agents": [
+    {
+      "id": "claude-3-5-sonnet",
+      "displayName": "Claude 3.5 Sonnet",
+      "providerId": "anthropic",
+      "model": "claude-3-5-sonnet-20241022",
+      "costTier": "high",
+      "roles": ["orchestrator", "planner", "researcher", "executor", "critic"],
+      "strengths": "Strong reasoning, coding, and general tasks.",
+      "pricing": {
+        "inputUsdPerMTok": 3.0,
+        "outputUsdPerMTok": 15.0
+      }
+    },
+    {
+      "id": "claude-3-5-haiku",
+      "displayName": "Claude 3.5 Haiku",
+      "providerId": "anthropic",
+      "model": "claude-3-5-haiku-20241022",
+      "costTier": "low",
+      "roles": ["researcher", "critic"],
+      "strengths": "Fast, cheap, good for simple tasks."
+    }
+  ],
+  "policy": {
+    "pins": [
+      {
+        "role": "orchestrator",
+        "agentId": "claude-3-5-sonnet"
+      }
+    ],
+    "fallbackChains": [],
+    "rules": [],
+    "preferences": "Prefer high quality over low cost for complex tasks.",
+    "distinctCritic": true,
+    "autoConfirmBelowConfidence": 0.6,
+    "maxReplacementsPerSlot": 2,
+    "stallAfterMs": {
+      "api": 45000,
+      "cli": 120000
+    }
+  },
+  "budgets": {
+    "maxSteps": 100,
+    "maxUsd": 10.0,
+    "maxWallClockMs": 600000
+  },
+  "defaults": {
+    "mode": "auto",
+    "orchestratorAgentId": "claude-3-5-sonnet"
+  }
+}
