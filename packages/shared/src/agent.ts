@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Effort } from "./common.js";
+import type { Effort, SlotRole } from "./common.js";
 import type { BlackboardEntry } from "./blackboard.js";
 
 export const Usage = z.object({
@@ -53,6 +53,8 @@ export interface AdapterCapabilities {
 }
 
 export interface AdapterRunInput {
+  /** Slot role this run fills; lets adapters honor role-scoped chaos hooks (plan.md 2.6). */
+  role?: SlotRole;
   system: string;
   task: string;
   inputs: Record<string, BlackboardEntry | unknown>;
