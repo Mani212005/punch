@@ -4,6 +4,7 @@ export * from "./budget.js";
 export * from "./trace/writer.js";
 export * from "./trace/render-md.js";
 export * from "./trace/bench.js";
+export * from "./trace/resilience.js";
 
 // Approvals
 export * from "./approval.js";
