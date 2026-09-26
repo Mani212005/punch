@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildProgram, NotImplementedError } from "./cli.js";
 
-const cases: string[][] = [["serve"], ["kill", "run1", "researcher"]];
+const cases: string[][] = [["serve"]];
 
 describe("punch CLI stubs", () => {
   it.each(cases)("%s is a not-implemented stub", async (...args) => {

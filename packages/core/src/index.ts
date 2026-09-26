@@ -32,6 +32,7 @@ export * from "./roles/critic.js";
 export * from "./roles/review.js";
 
 // Run loop
+export * from "./slots/index.js";
 export * from "./run/index.js";
 
 // Validation sandbox (E5)

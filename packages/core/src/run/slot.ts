@@ -37,7 +37,7 @@ export interface ReplacedAgent {
 /**
  * plan.md 2.1. A slot that finished (or failed) one subtask may start the next one, so the
  * terminal-looking states still lead back to `running`; `replacing` is only entered by the
- * supervisor (A9), and `degraded` is the end of the line.
+ * supervisor (A9), and `degraded` is the end of the replacement line.
  */
 const TRANSITIONS: Record<SlotState, readonly SlotState[]> = {
   assigned: ["running", "replacing"],
@@ -48,7 +48,8 @@ const TRANSITIONS: Record<SlotState, readonly SlotState[]> = {
   rejected: ["running", "replacing"],
   replacing: ["running", "exhausted"],
   exhausted: ["degraded"],
-  degraded: [],
+  // A degraded slot is never replaced again, but its last agent may still take other subtasks.
+  degraded: ["running"],
 };
 
 export class SlotTransitionError extends Error {
@@ -201,8 +202,8 @@ export class Slot {
     classification?: Extract<TraceEvent, { kind: "slot.failed" }>["classification"],
   ): void {
     this.settle(subtaskId);
-    // A concurrent subtask may already have moved the slot off `running`.
-    if (this._state === "running") this.transition("failed");
+    // A concurrent subtask may already have moved the slot off `running`; a stalled slot fails too.
+    if (this._state === "running" || this._state === "stalled") this.transition("failed");
     this.emit({
       kind: "slot.failed",
       role: this.role,

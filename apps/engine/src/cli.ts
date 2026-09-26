@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { getConfigPath, loadConfig, ConfigError } from "./config/index.js";
 import { TestAdapterRegistry } from "./config/registry.js";
+import { killCommand } from "./kill.js";
 import { runCommand } from "./run.js";
 
 export class NotImplementedError extends Error {
@@ -36,7 +37,7 @@ export function buildProgram(): Command {
     .option("-c, --config <path>", "path to config file")
     .option(
       "--chaos <profile>",
-      "chaos profile, repeatable (tool:<name>:500|hang|truncate|empty)",
+      "chaos profile, repeatable (tool:<name>:500|hang|truncate|empty, provider-down:<id>, rate-limit:<id>, stall|timeout|garbage|hallucinate:<role>, kill-after:<role>:<n>)",
       collect,
       [],
     )
@@ -59,7 +60,16 @@ export function buildProgram(): Command {
     .description("operator kill of the agent in a slot (demo lever)")
     .argument("<runId>")
     .argument("<slot>", "role slot: planner|researcher|executor|critic")
-    .action(stub("kill"));
+    .option("--runs-dir <dir>", "directory holding runs/<runId>", "runs")
+    .option("-m, --message <text>", "reason recorded in the trace")
+    .action((runId: string, slot: string, options: { runsDir: string; message?: string }) => {
+      try {
+        console.log(killCommand(runId, slot, options));
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : String(err));
+        process.exitCode = 1;
+      }
+    });
   program
     .command("approve")
     .description("approve a pending irreversible action")

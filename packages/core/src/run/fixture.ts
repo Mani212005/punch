@@ -71,7 +71,11 @@ export interface RunFixture {
     /** `replan` answers every planner call after the first. */
     planner: { plan: unknown; replan?: unknown };
     /** Subtasks whose drafts the critic rejects, with the findings it returns. */
-    critic?: { reject?: Record<string, unknown[]> };
+    critic?: {
+      reject?: Record<string, unknown[]>;
+      /** Reject only drafts produced by these agents, so a replacement's draft is accepted. */
+      rejectProducers?: string[];
+    };
     researcher: Record<string, FixtureScript>;
     executor: Record<string, FixtureScript>;
   };
@@ -167,9 +171,14 @@ function createFixtureJevTransport(fixture: RunFixture): JevTransport {
         };
       }
       if (ids.every((id) => id.startsWith("claim_"))) {
+        // A claim whose cited tool call does not exist in the trace is not supported.
+        const score = (id: string): number =>
+          JSON.stringify(request.questions[id] ?? "").includes("exists in the trace")
+            ? 0.05
+            : support;
         return {
           model: "jev-fixture",
-          answers: Object.fromEntries(ids.map((id) => [id, { type: "noul", noul: support }])),
+          answers: Object.fromEntries(ids.map((id) => [id, { type: "noul", noul: score(id) }])),
           usage,
         };
       }
@@ -243,7 +252,12 @@ class FixtureAdapter implements AgentAdapter {
     }
     if (role === "critic") {
       const reviewed = /subtask (\S+?):/.exec(input.task)?.[1] ?? "";
-      const findings = this.fixture.agents.critic?.reject?.[reviewed];
+      const producer = /Produced by the \S+ \((\S+?)\)/.exec(input.task)?.[1];
+      const only = this.fixture.agents.critic?.rejectProducers;
+      const findings =
+        !only || (producer !== undefined && only.includes(producer))
+          ? this.fixture.agents.critic?.reject?.[reviewed]
+          : undefined;
       yield {
         type: "text",
         text: findings
@@ -261,6 +275,14 @@ class FixtureAdapter implements AgentAdapter {
       return;
     }
     const subtaskId = /Subtask (\S+?):/.exec(input.task)?.[1] ?? "";
+    const handoff = input.inputs["handoff"] as
+      | {
+          predecessor: { agentId: string };
+          cachedToolResults: unknown[];
+          filesInspected: unknown[];
+          evidenceRecords: unknown[];
+        }
+      | undefined;
     const scripts =
       role === "researcher" ? this.fixture.agents.researcher : this.fixture.agents.executor;
     const script = scripts[subtaskId] ?? scripts["*"];
@@ -288,9 +310,15 @@ class FixtureAdapter implements AgentAdapter {
       return value;
     };
 
-    yield { type: "text", text: `Working on ${subtaskId}.` };
+    yield {
+      type: "text",
+      text: handoff
+        ? `Taking over ${subtaskId} from ${handoff.predecessor.agentId}: ${handoff.cachedToolResults.length} cached tool results, ${handoff.filesInspected.length} files inspected, ${handoff.evidenceRecords.length} evidence records. Continuing, not restarting.`
+        : `Working on ${subtaskId}.`,
+    };
     const calls = script.calls ?? [];
     for (const [i, call] of calls.entries()) {
+      if (input.signal.aborted) return;
       const callId = `${subtaskId}-c${i + 1}`;
       let resolved: Record<string, unknown>;
       try {
@@ -324,6 +352,9 @@ class FixtureAdapter implements AgentAdapter {
       okCalls[i] = ok;
       outputs[i] = output;
       yield { type: "tool_result", callId, tool: call.tool, ok, output };
+      // A real agent spends a model turn between tool calls; a macrotask keeps the replay
+      // interleavable, so operator kills and stall checks can land mid-subtask.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
     const failed = okCalls.some((ok) => !ok);
     const chosen = failed ? script.degraded : script.result;
