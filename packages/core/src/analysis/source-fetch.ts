@@ -126,10 +126,7 @@ export class SourceWorkdir {
   /**
    * Recursively copies files from a local source directory into this workdir.
    */
-  async populateFromLocal(
-    sourceDir: string,
-    signal?: AbortSignal,
-  ): Promise<FetchSourceResult> {
+  async populateFromLocal(sourceDir: string, signal?: AbortSignal): Promise<FetchSourceResult> {
     const resolvedSource = path.resolve(sourceDir);
     if (!fs.existsSync(resolvedSource)) {
       throw new Error(`Source directory not found: ${resolvedSource}`);
@@ -223,8 +220,7 @@ export class SourceWorkdir {
     client?: GitHubClient;
     signal?: AbortSignal;
   }): Promise<FetchSourceResult> {
-    const client =
-      options.client ?? new GitHubClient({ traceSink: this.traceSink });
+    const client = options.client ?? new GitHubClient({ traceSink: this.traceSink });
     const files: string[] = [];
     let fileCount = 0;
     let totalBytes = 0;
@@ -422,12 +418,14 @@ export class SourceWorkdir {
   /**
    * Reads all JS/TS source files into a map of relative path -> content.
    */
-  readAllSourceFiles(options: {
-    extensions?: string[];
-    maxFiles?: number;
-    timeoutMs?: number;
-    signal?: AbortSignal;
-  } = {}): {
+  readAllSourceFiles(
+    options: {
+      extensions?: string[];
+      maxFiles?: number;
+      timeoutMs?: number;
+      signal?: AbortSignal;
+    } = {},
+  ): {
     files: Map<string, string>;
     truncated: boolean;
     timedOut: boolean;

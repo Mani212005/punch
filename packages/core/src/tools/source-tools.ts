@@ -3,22 +3,13 @@ import {
   type FetchSourceResult,
   type ReadFileResult,
 } from "../analysis/source-fetch.js";
-import {
-  analyzeImportGraph,
-  type ImportGraphResult,
-} from "../analysis/import-graph.js";
-import {
-  findCallSites,
-  type FindCallSitesResult,
-} from "../analysis/call-sites.js";
+import { analyzeImportGraph, type ImportGraphResult } from "../analysis/import-graph.js";
+import { findCallSites, type FindCallSitesResult } from "../analysis/call-sites.js";
 import {
   findEntrypointsAndRoutes,
   type FindEntrypointsAndRoutesResult,
 } from "../analysis/entrypoints.js";
-import {
-  mapTestsForModule,
-  type MapTestsForModuleResult,
-} from "../analysis/test-map.js";
+import { mapTestsForModule, type MapTestsForModuleResult } from "../analysis/test-map.js";
 import type { ToolExecutionContext } from "./registry.js";
 import { GitHubClient } from "./github.js";
 
@@ -139,7 +130,8 @@ export async function executeAnalyzeImportGraph(
   context: ToolExecutionContext,
 ): Promise<ImportGraphResult> {
   const workdir = getOrCreateWorkdir(input.workdir, context);
-  const targetPackages = input.targetPackages ?? (input.targetPackage ? [input.targetPackage] : undefined);
+  const targetPackages =
+    input.targetPackages ?? (input.targetPackage ? [input.targetPackage] : undefined);
 
   return analyzeImportGraph({
     workdir,

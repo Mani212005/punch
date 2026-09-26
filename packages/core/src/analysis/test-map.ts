@@ -205,9 +205,7 @@ export async function mapTestsForModule(
   const matchingTestFiles = Array.from(matchingTestFilesSet).sort();
 
   // Determine untested symbols
-  const untestedSymbols = targetSymbols.filter(
-    (sym) => !testedSymbolsSet.has(sym.toLowerCase()),
-  );
+  const untestedSymbols = targetSymbols.filter((sym) => !testedSymbolsSet.has(sym.toLowerCase()));
 
   // Generate evidence records
   const evidence: EvidenceRecord[] = [];

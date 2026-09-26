@@ -5,13 +5,7 @@ import { SourceWorkdir } from "./source-fetch.js";
 import { analyzeImportGraph } from "./import-graph.js";
 import { findCallSites } from "./call-sites.js";
 
-export type EntrypointType =
-  | "main"
-  | "module"
-  | "bin"
-  | "exports"
-  | "script"
-  | "common_file";
+export type EntrypointType = "main" | "module" | "bin" | "exports" | "script" | "common_file";
 
 export interface Entrypoint {
   type: EntrypointType;
@@ -22,12 +16,7 @@ export interface Entrypoint {
 }
 
 export type RouteFramework =
-  | "express"
-  | "fastify"
-  | "nextjs_app"
-  | "nextjs_pages"
-  | "hono"
-  | "custom";
+  "express" | "fastify" | "nextjs_app" | "nextjs_pages" | "hono" | "custom";
 
 export interface RouteEndpoint {
   framework: RouteFramework;
@@ -65,25 +54,14 @@ function makeEvidenceId(kind: string): string {
   return `ev_${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const HTTP_METHODS = new Set([
-  "get",
-  "post",
-  "put",
-  "delete",
-  "patch",
-  "head",
-  "options",
-  "all",
-]);
+const HTTP_METHODS = new Set(["get", "post", "put", "delete", "patch", "head", "options", "all"]);
 
 /**
  * Normalizes Next.js App Router folder path to an HTTP route pattern.
  * E.g.: 'app/api/users/[id]/route.ts' -> '/api/users/:id'
  */
 function nextjsAppPathToRoute(relPath: string): string {
-  let normalized = relPath
-    .replace(/^app\//, "")
-    .replace(/\/(route|page)\.(ts|js|tsx|jsx)$/, "");
+  let normalized = relPath.replace(/^app\//, "").replace(/\/(route|page)\.(ts|js|tsx|jsx)$/, "");
   if (!normalized.startsWith("/")) {
     normalized = `/${normalized}`;
   }
@@ -273,7 +251,11 @@ export async function findEntrypointsAndRoutes(
   }
 
   // 3. Scan all source files for routes and handlers
-  const { files: fileContents, truncated, timedOut } = workdir.readAllSourceFiles({
+  const {
+    files: fileContents,
+    truncated,
+    timedOut,
+  } = workdir.readAllSourceFiles({
     timeoutMs: timeoutMs - (Date.now() - startTime),
     signal: options.signal,
   });
@@ -382,9 +364,7 @@ export async function findEntrypointsAndRoutes(
             const arg0 = args[0];
             if (args.length >= 1 && arg0 && ts.isStringLiteral(arg0)) {
               const routeSubPath = arg0.text;
-              const { line } = sourceFile.getLineAndCharacterOfPosition(
-                node.getStart(sourceFile),
-              );
+              const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
               // Determine framework
               let framework: RouteFramework = "express";
@@ -470,7 +450,11 @@ export async function findEntrypointsAndRoutes(
 
   // Adjust router prefixes across files if express router was imported and mounted
   for (const route of routes) {
-    if (route.framework === "express" && !route.path.startsWith("/api") && !route.path.startsWith("/users")) {
+    if (
+      route.framework === "express" &&
+      !route.path.startsWith("/api") &&
+      !route.path.startsWith("/users")
+    ) {
       for (const [mountKey, prefix] of mountedPrefixes.entries()) {
         const [mountFile] = mountKey.split("::");
         if (mountFile !== route.file) {

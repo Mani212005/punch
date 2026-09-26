@@ -94,9 +94,7 @@ describe("SourceWorkdir and source-fetch", () => {
         }
         if (reqPath === "src") {
           return {
-            data: [
-              { name: "index.ts", path: "src/index.ts", sha: "3", size: 120, type: "file" },
-            ],
+            data: [{ name: "index.ts", path: "src/index.ts", sha: "3", size: 120, type: "file" }],
             status: 200,
             retries: 0,
             cached: false,

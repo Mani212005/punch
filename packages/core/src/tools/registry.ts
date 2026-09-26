@@ -263,7 +263,10 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
         repo: { type: "string", description: "GitHub repository name" },
         ref: { type: "string", description: "Git commit SHA, branch, or tag" },
         repoUrl: { type: "string", description: "Full GitHub repository URL" },
-        localPath: { type: "string", description: "Local directory path for offline/test execution" },
+        localPath: {
+          type: "string",
+          description: "Local directory path for offline/test execution",
+        },
         maxFiles: { type: "number", description: "Maximum number of files to fetch" },
         maxFileSize: { type: "number", description: "Maximum size per file in bytes" },
         timeoutMs: { type: "number", description: "Timeout in milliseconds" },
@@ -273,7 +276,8 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
   },
   read_repo_file: {
     name: "read_repo_file",
-    description: "Read a source file from the repository workdir with line span and evidence generation.",
+    description:
+      "Read a source file from the repository workdir with line span and evidence generation.",
     inputSchema: {
       type: "object",
       properties: {
@@ -304,7 +308,8 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
   },
   analyze_import_graph: {
     name: "analyze_import_graph",
-    description: "Build TypeScript/JavaScript AST import and export graph across all repository source files.",
+    description:
+      "Build TypeScript/JavaScript AST import and export graph across all repository source files.",
     inputSchema: {
       type: "object",
       properties: {
@@ -324,7 +329,8 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
   },
   static_import_graph: {
     name: "static_import_graph",
-    description: "Alias for analyze_import_graph: build import and export graph across repository source files.",
+    description:
+      "Alias for analyze_import_graph: build import and export graph across repository source files.",
     inputSchema: {
       type: "object",
       properties: {
@@ -342,7 +348,8 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
   },
   find_call_sites: {
     name: "find_call_sites",
-    description: "Search for call sites and member accesses of affected symbols belonging to a package.",
+    description:
+      "Search for call sites and member accesses of affected symbols belonging to a package.",
     inputSchema: {
       type: "object",
       properties: {
@@ -381,12 +388,16 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
   },
   find_entrypoints_and_routes: {
     name: "find_entrypoints_and_routes",
-    description: "Identify application entrypoints and HTTP routes (Express, Fastify, Next.js, Hono).",
+    description:
+      "Identify application entrypoints and HTTP routes (Express, Fastify, Next.js, Hono).",
     inputSchema: {
       type: "object",
       properties: {
         workdir: { type: "string", description: "Path to repository workdir" },
-        targetPackage: { type: "string", description: "Optional package to test reachability from routes" },
+        targetPackage: {
+          type: "string",
+          description: "Optional package to test reachability from routes",
+        },
         targetSymbols: {
           type: "array",
           items: { type: "string" },
@@ -418,7 +429,10 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
       type: "object",
       properties: {
         workdir: { type: "string", description: "Path to repository workdir" },
-        targetModule: { type: "string", description: "Target module relative path (e.g. src/parser.ts)" },
+        targetModule: {
+          type: "string",
+          description: "Target module relative path (e.g. src/parser.ts)",
+        },
         targetPackage: { type: "string", description: "Target package name (e.g. qs)" },
         targetSymbols: {
           type: "array",

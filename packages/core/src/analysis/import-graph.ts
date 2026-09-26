@@ -183,9 +183,7 @@ function extractImportsFromFile(
   >();
 
   function getLineCol(node: ts.Node) {
-    const { line, character } = sourceFile.getLineAndCharacterOfPosition(
-      node.getStart(sourceFile),
-    );
+    const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
     return { line: line + 1, column: character + 1 };
   }
 
@@ -245,9 +243,7 @@ function extractImportsFromFile(
             } else if (ts.isNamedImports(clause.namedBindings)) {
               importType = "esm_named";
               for (const elem of clause.namedBindings.elements) {
-                const importedName = elem.propertyName
-                  ? elem.propertyName.text
-                  : elem.name.text;
+                const importedName = elem.propertyName ? elem.propertyName.text : elem.name.text;
                 importedSymbols.push(importedName);
                 localImportedSymbols.set(elem.name.text, {
                   specifier,
@@ -288,9 +284,7 @@ function extractImportsFromFile(
         if (node.exportClause) {
           if (ts.isNamedExports(node.exportClause)) {
             for (const elem of node.exportClause.elements) {
-              const sourceSymbol = elem.propertyName
-                ? elem.propertyName.text
-                : elem.name.text;
+              const sourceSymbol = elem.propertyName ? elem.propertyName.text : elem.name.text;
               const exportedSymbol = elem.name.text;
 
               reExports.push({
@@ -467,7 +461,10 @@ function extractImportsFromFile(
       }
 
       // import('specifier') dynamic import
-      if (expr.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(expr) && expr.text === "import")) {
+      if (
+        expr.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(expr) && expr.text === "import")
+      ) {
         const arg = node.arguments[0];
         const { line, column } = getLineCol(node);
 
@@ -537,7 +534,11 @@ export async function analyzeImportGraph(
     workdir = options.workdir;
   }
 
-  const { files: fileContents, truncated, timedOut } = workdir.readAllSourceFiles({
+  const {
+    files: fileContents,
+    truncated,
+    timedOut,
+  } = workdir.readAllSourceFiles({
     maxFiles: options.maxFiles,
     timeoutMs: options.timeoutMs,
     signal: options.signal,

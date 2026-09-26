@@ -81,9 +81,7 @@ function extractSnippet(lines: string[], startLine: number, endLine: number): st
 /**
  * Searches for all call sites and usages of symbols belonging to a target package.
  */
-export async function findCallSites(
-  options: FindCallSitesOptions,
-): Promise<FindCallSitesResult> {
+export async function findCallSites(options: FindCallSitesOptions): Promise<FindCallSitesResult> {
   let workdir: SourceWorkdir;
   if (typeof options.workdir === "string") {
     workdir = new SourceWorkdir({ baseDir: options.workdir });
@@ -110,11 +108,14 @@ export async function findCallSites(
     signal: options.signal,
   });
 
-  const { files: fileContents, truncated: filesTruncated, timedOut: filesTimedOut } =
-    workdir.readAllSourceFiles({
-      timeoutMs: timeoutMs - (Date.now() - startTime),
-      signal: options.signal,
-    });
+  const {
+    files: fileContents,
+    truncated: filesTruncated,
+    timedOut: filesTimedOut,
+  } = workdir.readAllSourceFiles({
+    timeoutMs: timeoutMs - (Date.now() - startTime),
+    signal: options.signal,
+  });
 
   const availableFiles = new Set(fileContents.keys());
   let truncated = filesTruncated;
@@ -205,7 +206,11 @@ export async function findCallSites(
             // Default import: import qs from 'qs'
             if (clause.name) {
               localPackageBindings.set(clause.name.text, "default");
-              if (targetSymbols.has("default") || targetSymbols.has(targetPkg.toLowerCase()) || checkAnySymbol) {
+              if (
+                targetSymbols.has("default") ||
+                targetSymbols.has(targetPkg.toLowerCase()) ||
+                checkAnySymbol
+              ) {
                 localDirectBindings.set(clause.name.text, {
                   originalSymbol: "default",
                   importStyle: "default",
@@ -219,9 +224,7 @@ export async function findCallSites(
               } else if (ts.isNamedImports(clause.namedBindings)) {
                 // Named imports: import { parse as p } from 'qs'
                 for (const elem of clause.namedBindings.elements) {
-                  const importedName = elem.propertyName
-                    ? elem.propertyName.text
-                    : elem.name.text;
+                  const importedName = elem.propertyName ? elem.propertyName.text : elem.name.text;
                   const localName = elem.name.text;
                   if (targetSymbols.has(importedName.toLowerCase()) || checkAnySymbol) {
                     localDirectBindings.set(localName, {
@@ -238,9 +241,7 @@ export async function findCallSites(
           const clause = node.importClause;
           if (clause && clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
             for (const elem of clause.namedBindings.elements) {
-              const importedName = elem.propertyName
-                ? elem.propertyName.text
-                : elem.name.text;
+              const importedName = elem.propertyName ? elem.propertyName.text : elem.name.text;
               const localName = elem.name.text;
 
               // Check in reExportMap if resolved file re-exports target symbol
@@ -279,7 +280,11 @@ export async function findCallSites(
           if (pkgName === targetPkg) {
             if (ts.isIdentifier(node.name)) {
               localPackageBindings.set(node.name.text, "default");
-              if (targetSymbols.has("default") || targetSymbols.has(targetPkg.toLowerCase()) || checkAnySymbol) {
+              if (
+                targetSymbols.has("default") ||
+                targetSymbols.has(targetPkg.toLowerCase()) ||
+                checkAnySymbol
+              ) {
                 localDirectBindings.set(node.name.text, {
                   originalSymbol: "default",
                   importStyle: "default",
@@ -310,11 +315,7 @@ export async function findCallSites(
 
     // Step 2: Track local aliases (e.g. const p = qs.parse)
     function scanAliases(node: ts.Node) {
-      if (
-        ts.isVariableDeclaration(node) &&
-        node.initializer &&
-        ts.isIdentifier(node.name)
-      ) {
+      if (ts.isVariableDeclaration(node) && node.initializer && ts.isIdentifier(node.name)) {
         const varName = node.name.text;
         const init = node.initializer;
 

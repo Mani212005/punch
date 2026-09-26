@@ -31,8 +31,12 @@ describe("Source tools and static analysis registry integration", () => {
     expect(res.output?.workdir).toBeDefined();
 
     // Verify trace events
-    expect(events.some((e) => e.kind === "tool.called" && e.tool === "fetch_repo_source")).toBe(true);
-    expect(events.some((e) => e.kind === "tool.result" && e.tool === "fetch_repo_source")).toBe(true);
+    expect(events.some((e) => e.kind === "tool.called" && e.tool === "fetch_repo_source")).toBe(
+      true,
+    );
+    expect(events.some((e) => e.kind === "tool.result" && e.tool === "fetch_repo_source")).toBe(
+      true,
+    );
   });
 
   it("executes read_repo_file and static_read_file alias", async () => {
