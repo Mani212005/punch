@@ -1,0 +1,40 @@
+/* Punch design tokens - Bauhaus + Bento + Utilitarian.
+   Source: design/tokens.css. Single source of truth. DESIGN.md explains the rules; components.css consumes these. */
+:root,
+.bz {
+  /* surfaces */
+  --bz-paper: #f3efe6; /* warm off-white canvas */
+  --bz-paper-2: #e8e2d4; /* alternate tile fill */
+  --bz-ink: #121212; /* text, borders, dark tiles */
+  --bz-ink-2: #5b5750; /* secondary text */
+  --bz-ink-3: #a39e93; /* hairlines, disabled */
+
+  /* the three primaries: each has exactly one meaning */
+  --bz-red: #e4321b; /* failed, stop, irreversible, deny */
+  --bz-blue: #1f48c5; /* running, active, primary action */
+  --bz-yellow: #f5c518; /* attention: stalled, takeover, waiting for a human */
+
+  /* structure */
+  --bz-line: 2px; /* every border is this thick, in ink */
+  --bz-radius: 10px; /* tiles only; inner controls are square */
+  --bz-gap: 10px; /* bento gutter */
+  --bz-pad: 14px; /* tile padding */
+
+  /* type */
+  --bz-font-display: "Space Grotesk", "Futura", "Helvetica Neue", Arial, sans-serif;
+  --bz-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --bz-track-label: 0.08em;
+  --bz-track-display: -0.02em;
+
+  /* type scale (px) */
+  --bz-fs-label: 10px;
+  --bz-fs-body: 13px;
+  --bz-fs-lead: 16px;
+  --bz-fs-h3: 18px;
+  --bz-fs-h2: 28px;
+  --bz-fs-h1: 44px;
+
+  /* motion: one duration, one curve, no bounce */
+  --bz-dur: 180ms;
+  --bz-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
