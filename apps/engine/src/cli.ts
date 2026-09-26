@@ -40,6 +40,10 @@ export function buildProgram(): Command {
     .option("--runs-dir <dir>", "directory holding runs/<runId>", "runs")
     .option("--sessions-dir <dir>", "directory holding orchestrator sessions")
     .option("-c, --config <path>", "path to config file")
+    .option(
+      "--tunnel",
+      "expose the engine through a cloudflared quick tunnel and print a viewer-only URL",
+    )
     .action(
       async (options: {
         port: string;
@@ -50,17 +54,26 @@ export function buildProgram(): Command {
         runsDir: string;
         sessionsDir?: string;
         config?: string;
+        tunnel?: boolean;
       }) => {
-        const running = await serveCommand({
-          port: Number(options.port),
-          host: options.host,
-          runsDir: options.runsDir,
-          webOrigins: options.webOrigin,
-          ...(options.pairingToken ? { pairingToken: options.pairingToken } : {}),
-          ...(options.viewerToken ? { viewerToken: options.viewerToken } : {}),
-          ...(options.sessionsDir ? { sessionsDir: options.sessionsDir } : {}),
-          ...(options.config ? { config: options.config } : {}),
-        });
+        let running;
+        try {
+          running = await serveCommand({
+            port: Number(options.port),
+            host: options.host,
+            runsDir: options.runsDir,
+            webOrigins: options.webOrigin,
+            ...(options.pairingToken ? { pairingToken: options.pairingToken } : {}),
+            ...(options.viewerToken ? { viewerToken: options.viewerToken } : {}),
+            ...(options.sessionsDir ? { sessionsDir: options.sessionsDir } : {}),
+            ...(options.config ? { config: options.config } : {}),
+            ...(options.tunnel ? { tunnel: true as const } : {}),
+          });
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : String(err));
+          process.exitCode = 1;
+          return;
+        }
         process.once("SIGINT", () => {
           void running.close().then(() => process.exit(0));
         });

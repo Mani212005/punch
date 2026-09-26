@@ -20,6 +20,7 @@ describe("punch CLI", () => {
         "--viewer-token",
         "--web-origin",
         "--runs-dir",
+        "--tunnel",
         "--config",
       ]),
     );

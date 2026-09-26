@@ -9,6 +9,13 @@ import type { AdapterRunInput, AgentAdapter, AgentEvent, TraceEvent } from "@pun
 import { buildProgram } from "./cli.js";
 import { createEngineServer, type EngineServer } from "./server/server.js";
 import { serveCommand } from "./server/serve.js";
+import {
+  buildViewerEventsUrl,
+  buildViewerTraceUrl,
+  buildViewerUrl,
+  CLOUDFLARED_INSTALL_GUIDANCE,
+  parseViewerUrl,
+} from "./server/tunnel.js";
 
 const CLEAN_FIXTURE_DIR = path.resolve(
   fileURLToPath(import.meta.url),
@@ -548,7 +555,107 @@ describe("engine HTTP API: routes, auth, and validation", () => {
         "--viewer-token",
         "--web-origin",
         "--runs-dir",
+        "--tunnel",
       ]),
     );
+  });
+});
+
+describe("C1b remote live viewing: viewer-only access through the tunnel URL shape", () => {
+  it(
+    "streams events/trace with the viewer token and refuses kill, approve, stop",
+    { timeout: 90_000 },
+    async () => {
+      const { server, url, pairing, viewer } = await startTestServer();
+      try {
+        const created = await api("POST", `${url}/runs`, {
+          token: pairing,
+          body: { fixture: CLEAN_FIXTURE_DIR },
+        });
+        expect(created.status).toBe(201);
+        const runId = (created.json as { id: string }).id;
+
+        await waitFor(
+          async () => {
+            const detail = await api("GET", `${url}/runs/${runId}`, { token: pairing });
+            return ["completed", "degraded", "aborted", "failed"].includes(
+              (detail.json as { summary: { status: string } }).summary.status,
+            );
+          },
+          60_000,
+          "clean fixture run to settle",
+        );
+
+        // The tunnel prints one viewer URL carrying only the viewer token.
+        const viewerUrl = buildViewerUrl(url, viewer);
+        expect(viewerUrl).not.toContain(pairing);
+        const parsed = parseViewerUrl(viewerUrl);
+        expect(parsed).toEqual({ engineBase: url, runId: null, token: viewer });
+
+        // Per-run tunnel URLs parse back to the same base, run, and token.
+        expect(parseViewerUrl(buildViewerEventsUrl(url, runId, viewer))).toEqual({
+          engineBase: url,
+          runId,
+          token: viewer,
+        });
+        expect(parseViewerUrl(buildViewerTraceUrl(url, runId, viewer))).toEqual({
+          engineBase: url,
+          runId,
+          token: viewer,
+        });
+
+        // Remote viewers cannot set headers through every tunnel client, so
+        // the tunnel shape carries the token as `?token=` with no header.
+        const trace = await fetch(buildViewerTraceUrl(url, runId, viewer));
+        expect(trace.status).toBe(200);
+        expect(parseTraceJsonl(await trace.text()).length).toBeGreaterThan(0);
+
+        const events = await readSse(buildViewerEventsUrl(url, runId, viewer));
+        expect(events.status).toBe(200);
+        expect(events.frames.length).toBeGreaterThan(0);
+
+        // Control routes stay unreachable with the viewer token: kill,
+        // approve, and stop all return 401 through the tunnel URL shape.
+        expect(
+          await fetch(`${url}/runs/${runId}/slots/researcher/kill?token=${viewer}`, {
+            method: "POST",
+          }).then((r) => r.status),
+        ).toBe(401);
+        expect(
+          await fetch(`${url}/runs/${runId}/approvals/probe?token=${viewer}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ decision: "deny" }),
+          }).then((r) => r.status),
+        ).toBe(401);
+        expect(
+          await fetch(`${url}/runs/${runId}/stop?token=${viewer}`, { method: "POST" }).then(
+            (r) => r.status,
+          ),
+        ).toBe(401);
+
+        // The pairing token still controls the same run.
+        expect(
+          await api("POST", `${url}/runs/${runId}/slots/researcher/kill`, { token: pairing }).then(
+            (r) => r.status,
+          ),
+        ).toBe(200);
+      } finally {
+        await server.close();
+      }
+    },
+  );
+
+  it("serve --tunnel without cloudflared fails with install guidance", async () => {
+    await expect(
+      serveCommand({
+        port: 0,
+        host: "127.0.0.1",
+        runsDir: await mkTemp("punch-tunnel-runs-"),
+        tunnel: true,
+        tunnelBinary: "/nonexistent/punch-test-cloudflared",
+        log: () => {},
+      }),
+    ).rejects.toThrow(CLOUDFLARED_INSTALL_GUIDANCE);
   });
 });

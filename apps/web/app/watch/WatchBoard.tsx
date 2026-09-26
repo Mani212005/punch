@@ -77,6 +77,19 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
 
   const investigationReport = findInvestigationReport(state.blackboard);
 
+  const handleConnectViewer = (engineBase: string, runId: string, viewerToken: string) => {
+    setSourceConfig({
+      kind: "viewer-tunnel",
+      engineBase,
+      runId,
+      viewerToken,
+    });
+  };
+
+  // Viewer-tunnel sources are read-only: the viewer token cannot kill,
+  // approve, or stop, so no control is shown.
+  const readOnly = sourceConfig.kind === "viewer-tunnel";
+
   return (
     <main>
       <div
@@ -98,14 +111,26 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
           onSelectStaticTrace={handleSelectStaticTrace}
           onUploadFile={handleUploadFile}
           onConnectLive={handleConnectLive}
+          onConnectViewer={handleConnectViewer}
           loading={loading}
           error={error}
         />
 
+        {readOnly && (
+          <div className="bz-chip warn" role="status">
+            read-only viewer: Kill, Approve, and Stop are hidden (viewer token)
+          </div>
+        )}
+
         {/* Watch Board Bento Grid */}
         <div className="bz-grid">
           {/* Row 1: Run Tile (8 cols) + Budget Tile (4 cols) */}
-          <RunTile run={state.run} activeTakeover={state.takeover.active} onStop={() => {}} />
+          <RunTile
+            run={state.run}
+            activeTakeover={state.takeover.active}
+            onStop={() => {}}
+            readOnly={readOnly}
+          />
           <BudgetTile budget={state.budget} />
 
           {/* Row 2: Takeover Banner (12 cols) */}

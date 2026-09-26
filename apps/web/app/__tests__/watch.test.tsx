@@ -135,4 +135,61 @@ describe("Watch Board Replay Page", () => {
       expect(replayState).toEqual(liveState);
     }
   });
+
+  it("viewer URL mode streams read-only with no Kill/Approve/Stop shown", async () => {
+    const tracePath = getTakeoverTracePath();
+    const traceContent = fs.readFileSync(tracePath, "utf8");
+    const sseText =
+      traceContent
+        .split("\n")
+        .filter((line) => line.trim().length > 0)
+        .map((line) => `data: ${line.trim()}`)
+        .join("\n\n") + "\n\ndata: [DONE]\n\n";
+
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockImplementation((url: unknown) => {
+      const href = String(url);
+      if (href.includes("/runs/") && href.includes("/events")) {
+        return Promise.resolve(new Response(sseText, { status: 200 }));
+      }
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve(traceContent),
+      } as unknown as Response);
+    });
+
+    try {
+      render(<WatchBoard initialTraceId="takeover" />);
+
+      // Static replay first: the Stop control is visible in non-viewer mode.
+      await waitFor(() => {
+        expect(screen.getByText("2026-09-26-takeover")).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+
+      // Paste the viewer URL printed by `punch serve --tunnel` and connect.
+      fireEvent.click(screen.getByRole("button", { name: /Watch via Viewer URL/i }));
+      fireEvent.change(screen.getByLabelText(/viewer url/i), {
+        target: { value: "https://tunnel.example.com/?token=view-123" },
+      });
+      fireEvent.change(screen.getByLabelText(/run id/i), {
+        target: { value: "2026-09-26-takeover" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Watch Stream/i }));
+
+      // Read-only banner appears, the live run streams, and no control is shown.
+      await waitFor(() => {
+        expect(screen.getByText(/read-only viewer/i)).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(screen.getByText("2026-09-26-takeover")).toBeInTheDocument();
+      });
+      expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /kill/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
+      expect(screen.getByText("read-only")).toBeInTheDocument();
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

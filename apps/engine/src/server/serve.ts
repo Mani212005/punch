@@ -1,4 +1,5 @@
 import { createEngineServer } from "./server.js";
+import { buildViewerUrl, startQuickTunnel } from "./tunnel.js";
 
 export interface ServeOptions {
   port?: number;
@@ -9,6 +10,9 @@ export interface ServeOptions {
   runsDir?: string;
   sessionsDir?: string;
   config?: string;
+  tunnel?: boolean;
+  /** Override the cloudflared binary (tests use a missing path to prove the error path). */
+  tunnelBinary?: string;
   log?: (line: string) => void;
 }
 
@@ -16,6 +20,8 @@ export interface RunningServer {
   url: string;
   pairingToken: string;
   viewerToken: string;
+  tunnelUrl?: string;
+  viewerUrl?: string;
   close: () => Promise<void>;
 }
 
@@ -41,10 +47,42 @@ export async function serveCommand(options: ServeOptions = {}): Promise<RunningS
   log(`pairing token: ${server.tokens.pairingToken}`);
   log(`viewer token: ${server.tokens.viewerToken}`);
   log(`web origins: ${(options.webOrigins ?? []).join(", ") || "(none)"}`);
+
+  let tunnelUrl: string | undefined;
+  let viewerUrl: string | undefined;
+  let stopTunnel: (() => Promise<void>) | undefined;
+  if (options.tunnel) {
+    let handle;
+    try {
+      handle = await startQuickTunnel({
+        localUrl: url,
+        ...(options.tunnelBinary ? { binary: options.tunnelBinary } : {}),
+        log,
+      });
+    } catch (err) {
+      // Do not leave a half-started engine listening: --tunnel callers expect
+      // a non-zero exit with install guidance, not a tunnel-less server.
+      await server.close();
+      throw err;
+    }
+    tunnelUrl = handle.publicUrl;
+    viewerUrl = buildViewerUrl(handle.publicUrl, server.tokens.viewerToken);
+    stopTunnel = () => handle.stop();
+    log(`tunnel: ${tunnelUrl}`);
+    log(`viewer URL (read-only, paste into the Punch Watch page): ${viewerUrl}`);
+    log(
+      `control routes stay unreachable with the viewer token: kill, approve, and stop require the pairing token.`,
+    );
+  }
   return {
     url,
     pairingToken: server.tokens.pairingToken,
     viewerToken: server.tokens.viewerToken,
-    close: () => server.close(),
+    ...(tunnelUrl ? { tunnelUrl } : {}),
+    ...(viewerUrl ? { viewerUrl } : {}),
+    close: async () => {
+      if (stopTunnel) await stopTunnel();
+      await server.close();
+    },
   };
 }

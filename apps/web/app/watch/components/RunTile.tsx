@@ -5,9 +5,11 @@ interface RunTileProps {
   run: BoardRunState;
   activeTakeover: TakeoverBannerState | null;
   onStop?: () => void;
+  /** Viewer-token sources: hide every control (Stop, and Kill/Approve live elsewhere). */
+  readOnly?: boolean;
 }
 
-export default function RunTile({ run, activeTakeover, onStop }: RunTileProps) {
+export default function RunTile({ run, activeTakeover, onStop, readOnly = false }: RunTileProps) {
   const isTakeoverActive =
     run.isTakeoverInProgress || (activeTakeover !== null && activeTakeover.status === "replacing");
 
@@ -71,14 +73,17 @@ export default function RunTile({ run, activeTakeover, onStop }: RunTileProps) {
         </span>
       )}
 
-      <button
-        type="button"
-        className="bz-btn danger sm"
-        onClick={onStop}
-        disabled={run.status === "completed" || run.status === "aborted"}
-      >
-        Stop
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          className="bz-btn danger sm"
+          onClick={onStop}
+          disabled={run.status === "completed" || run.status === "aborted"}
+        >
+          Stop
+        </button>
+      )}
+      {readOnly && <span className="bz-chip ghost">read-only</span>}
     </div>
   );
 }
