@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "@punch/shared";
 import { parseAgentChaos } from "./agent.js";
+import { getToolSpecs } from "../tools/registry.js";
 import { AnthropicAdapter } from "./anthropic.js";
 import {
   collect,
@@ -102,6 +103,15 @@ describe("AnthropicAdapter", () => {
     });
     const names = (mock.requests[0]?.tools as { name: string }[]).map((t) => t.name);
     expect(names).toEqual(["npm_lookup", "write_result"]);
+  });
+
+  it("advertises the real A3 registry tool specs on the wire", async () => {
+    const { turns } = fixture("subtask-complete");
+    const { adapter: a, mock } = adapter([turns[1]!]);
+    const specs = getToolSpecs();
+    await collect(a.run(runInput({ tools: specs })));
+    const wire = (mock.requests[0]?.tools as { name: string }[]).map((t) => t.name);
+    expect(wire).toEqual([...specs.map((t) => t.name), "write_result"]);
   });
 
   it("omits thinking, effort and fallbacks for legacy models", async () => {
