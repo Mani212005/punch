@@ -1,7 +1,11 @@
-import type { AgentAdapter, AgentEntry, Provider } from "@punch/shared";
+import type { AgentAdapter, AgentEntry, Config, Provider } from "@punch/shared";
 import { createAnthropicAdapter, type ToolExecutor } from "../adapters/anthropic.js";
 import { GeminiAdapter } from "../adapters/gemini.js";
-import type { AgentChaos } from "../adapters/agent.js";
+import { NO_CHAOS, type AgentChaos } from "../adapters/agent.js";
+import { createClaudeCodeAdapter } from "../adapters/cli/claude-code.js";
+import { createOpenCodeAdapter } from "../adapters/cli/opencode.js";
+import { createAntigravityAdapter } from "../adapters/cli/antigravity.js";
+import { createGrokCliAdapter } from "../adapters/cli/grok-cli.js";
 
 /** What a factory needs to build an adapter for one agent invocation. */
 export interface AdapterFactoryContext {
@@ -53,9 +57,25 @@ export class AdapterRegistry {
   }
 }
 
-/** Every adapter that exists on main. The CLI adapters register here as they land. */
+/**
+ * Every adapter that exists: the API adapters (anthropic, gemini) and the subscription CLI
+ * adapters (claude-code, opencode, antigravity, grok-cli). CLI adapters run their own tool loop
+ * and ignore `executeTool`.
+ */
 export function createDefaultAdapterRegistry(): AdapterRegistry {
   return new AdapterRegistry()
+    .register("claude-code", ({ agent, provider, chaos }) =>
+      createClaudeCodeAdapter(agent, provider, { chaos }),
+    )
+    .register("opencode", ({ agent, provider, chaos }) =>
+      createOpenCodeAdapter(agent, provider, { chaos }),
+    )
+    .register("antigravity", ({ agent, provider, chaos }) =>
+      createAntigravityAdapter(agent, provider, { chaos }),
+    )
+    .register("grok-cli", ({ agent, provider, chaos }) =>
+      createGrokCliAdapter(agent, provider, { chaos }),
+    )
     .register("anthropic", ({ agent, provider, executeTool, chaos }) =>
       createAnthropicAdapter(agent, provider, { executeTool, chaos }),
     )
@@ -72,4 +92,46 @@ export function createDefaultAdapterRegistry(): AdapterRegistry {
         ...(agent.pricing ? { pricing: agent.pricing } : {}),
       });
     });
+}
+
+/**
+ * Health-checks one agent through its real adapter's `test()`. Never throws: a missing agent,
+ * provider or adapter comes back as `{ ok: false, detail }`.
+ */
+export async function testAgentHealth(
+  agentId: string,
+  config: Config,
+  adapters: AdapterRegistry = createDefaultAdapterRegistry(),
+): Promise<{ ok: boolean; detail: string }> {
+  const agent = config.agents.find((a) => a.id === agentId);
+  if (!agent) return { ok: false, detail: "Agent not found in config" };
+  const provider = config.providers.find((p) => p.id === agent.providerId);
+  if (!provider) return { ok: false, detail: `Provider ${agent.providerId} not found in config` };
+  try {
+    const adapter = adapters.create({
+      agent,
+      provider,
+      executeTool: async () => {
+        throw new Error("tools are not available during a health check");
+      },
+      chaos: NO_CHAOS,
+    });
+    return await adapter.test();
+  } catch (err) {
+    return { ok: false, detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Health-checks one provider by testing the first agent configured on it. */
+export async function testProviderHealth(
+  providerId: string,
+  config: Config,
+  adapters: AdapterRegistry = createDefaultAdapterRegistry(),
+): Promise<{ ok: boolean; detail: string }> {
+  if (!config.providers.some((p) => p.id === providerId)) {
+    return { ok: false, detail: "Provider not found in config" };
+  }
+  const agent = config.agents.find((a) => a.providerId === providerId);
+  if (!agent) return { ok: false, detail: "No agent is configured on this provider" };
+  return testAgentHealth(agent.id, config, adapters);
 }

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "providers": [{ "id": "cc", "kind": "claude-code" }],
+  "agents": [
+    {
+      "id": "cc-sonnet",
+      "displayName": "Claude Code (Sonnet)",
+      "providerId": "cc",
+      "model": "sonnet",
+      "costTier": "medium",
+      "roles": [
+        "orchestrator",
+        "planner",
+        "inventory",
+        "researcher",
+        "reachability",
+        "impact",
+        "investigator",
+        "critic",
+        "executor"
+      ],
+      "strengths": "Strong reasoning and coding via the signed-in Claude Code subscription."
+    },
+    {
+      "id": "cc-haiku",
+      "displayName": "Claude Code (Haiku)",
+      "providerId": "cc",
+      "model": "haiku",
+      "costTier": "low",
+      "roles": ["inventory", "researcher", "reachability", "impact", "investigator", "critic"],
+      "strengths": "Fast and cheap for simple tasks."
+    }
+  ],
+  "policy": {
+    "pins": [{ "role": "planner", "agentId": "cc-sonnet" }],
+    "fallbackChains": [],
+    "rules": [],
+    "preferences": "Use the cheapest agent that can do the job.",
+    "distinctCritic": false
+  },
+  "budgets": { "maxSteps": 100, "maxUsd": 2.0, "maxWallClockMs": 900000 },
+  "defaults": { "mode": "auto", "orchestratorAgentId": "cc-sonnet" }
+}

@@ -3,13 +3,14 @@ import type { AddressInfo } from "node:net";
 import {
   OrchestratorSession,
   createDefaultAdapterRegistry,
+  testAgentHealth,
+  testProviderHealth,
   createJev,
   createTypeSafeTransport,
   type ManualSelection,
 } from "@punch/core";
 import { AssignmentRequest, HealthCheckResult, SlotRole } from "@punch/shared";
 import { ConfigError, getConfigPath, loadConfig, validateConfig } from "../config/loader.js";
-import { TestAdapterRegistry } from "../config/registry.js";
 import { authorize, extractToken, randomToken, type ServerTokens } from "./auth.js";
 import { RunRegistry, BadRequestError, ConflictError, type RunRegistryOptions } from "./runs.js";
 import {
@@ -293,7 +294,7 @@ export function createEngineServer(options: EngineServerOptions): EngineServer {
       if (!authorize(token, tokens, "control")) return unauthorized(res, corsHeaders);
       try {
         const config = await loadConfig(getConfigPath(options.configPath));
-        const result = await new TestAdapterRegistry().testAgent(segments[1] ?? "", config);
+        const result = await testAgentHealth(segments[1] ?? "", config);
         const parsed = HealthCheckResult.safeParse(result);
         if (!parsed.success)
           return send(res, 500, { error: "health check returned an invalid shape" }, corsHeaders);
@@ -319,7 +320,7 @@ export function createEngineServer(options: EngineServerOptions): EngineServer {
       if (!authorize(token, tokens, "control")) return unauthorized(res, corsHeaders);
       try {
         const config = await loadConfig(getConfigPath(options.configPath));
-        const result = await new TestAdapterRegistry().testCliProvider(segments[1] ?? "", config);
+        const result = await testProviderHealth(segments[1] ?? "", config);
         const parsed = HealthCheckResult.safeParse(result);
         if (!parsed.success)
           return send(res, 500, { error: "health check returned an invalid shape" }, corsHeaders);
