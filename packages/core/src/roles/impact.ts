@@ -37,7 +37,8 @@ export type ImpactResult = z.infer<typeof ImpactResultSchema>;
 export const IMPACT_RESULT_JSON_SCHEMA: Record<string, unknown> = jsonSchemaOf(ImpactResultSchema);
 
 /** Numeric safety percentages without a methodology are forbidden (plan.md 8.2). */
-const INVENTED_PERCENTAGE = /\b\d{1,3}%\s*(safe|safer|safety|compatible|compatibility|success|successful)\b/i;
+const INVENTED_PERCENTAGE =
+  /\b\d{1,3}%\s*(safe|safer|safety|compatible|compatibility|success|successful)\b/i;
 
 export function assertNoInventedPercentages(value: unknown): void {
   const text = JSON.stringify(value);

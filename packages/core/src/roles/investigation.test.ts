@@ -6,14 +6,14 @@ import type { AgentEvent } from "@punch/shared";
 import type { InvestigatorResult } from "./investigator.js";
 import { planBrief } from "../planner.js";
 import { PLANNER_SYSTEM } from "../planner.js";
-import {
-  IMPACT_RESULT_JSON_SCHEMA,
-  assertNoInventedPercentages,
-  runImpact,
-} from "./impact.js";
+import { IMPACT_RESULT_JSON_SCHEMA, assertNoInventedPercentages, runImpact } from "./impact.js";
 import { assertRecommendationRules, recommendAction, runInvestigator } from "./investigator.js";
 import { INVENTORY_RESULT_JSON_SCHEMA, runInventory } from "./inventory.js";
-import { REACHABILITY_RESULT_JSON_SCHEMA, assertReachabilityVerdicts, runReachability } from "./reachability.js";
+import {
+  REACHABILITY_RESULT_JSON_SCHEMA,
+  assertReachabilityVerdicts,
+  runReachability,
+} from "./reachability.js";
 import { VULNERABILITY_RESEARCH_JSON_SCHEMA } from "./researcher.js";
 import { ValidationStepResultSchema, runValidationStep } from "./validator.js";
 import { toolsForRole } from "./common.js";
@@ -301,12 +301,24 @@ describe("recommendAction", () => {
   const cases: Array<[Parameters<typeof recommendAction>[0], string]> = [
     [{ severity: "HIGH", reachability: "REACHABLE", impact: "LOW", sandbox: "PASS" }, "UPGRADE"],
     [{ severity: "HIGH", reachability: "REACHABLE", impact: "LOW", sandbox: null }, "HUMAN_REVIEW"],
-    [{ severity: "HIGH", reachability: "REACHABLE", impact: "LOW", sandbox: "NOT_RUN" }, "HUMAN_REVIEW"],
-    [{ severity: "HIGH", reachability: "REACHABLE", impact: "LOW", sandbox: "FAIL" }, "HUMAN_REVIEW"],
-    [{ severity: "HIGH", reachability: "REACHABLE", impact: "HIGH", sandbox: "PASS" }, "HUMAN_REVIEW"],
+    [
+      { severity: "HIGH", reachability: "REACHABLE", impact: "LOW", sandbox: "NOT_RUN" },
+      "HUMAN_REVIEW",
+    ],
+    [
+      { severity: "HIGH", reachability: "REACHABLE", impact: "LOW", sandbox: "FAIL" },
+      "HUMAN_REVIEW",
+    ],
+    [
+      { severity: "HIGH", reachability: "REACHABLE", impact: "HIGH", sandbox: "PASS" },
+      "HUMAN_REVIEW",
+    ],
     [{ severity: "HIGH", reachability: "UNKNOWN", impact: "LOW", sandbox: null }, "HUMAN_REVIEW"],
     [{ severity: "LOW", reachability: "NOT_REACHABLE", impact: "LOW", sandbox: null }, "MONITOR"],
-    [{ severity: "MEDIUM", reachability: "NOT_REACHABLE", impact: "LOW", sandbox: null }, "NO_ACTION"],
+    [
+      { severity: "MEDIUM", reachability: "NOT_REACHABLE", impact: "LOW", sandbox: null },
+      "NO_ACTION",
+    ],
     [{ severity: "LOW", reachability: "UNKNOWN", impact: "LOW", sandbox: null }, "HUMAN_REVIEW"],
   ];
   for (const [input, expected] of cases) {
@@ -414,11 +426,11 @@ describe("role tool sets", () => {
       expect(tools.every((t) => !t.irreversible)).toBe(true);
       expect(tools.map((t) => t.name)).toContain("analyze_import_graph");
     }
-    expect(toolsForRole("investigator").map((t) => t.name).sort()).toEqual([
-      "get_tool_result",
-      "list_blackboard",
-      "read_blackboard",
-    ]);
+    expect(
+      toolsForRole("investigator")
+        .map((t) => t.name)
+        .sort(),
+    ).toEqual(["get_tool_result", "list_blackboard", "read_blackboard"]);
   });
 });
 

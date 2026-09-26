@@ -64,11 +64,7 @@ export function assertReachabilityVerdicts(value: ReachabilityResult): void {
 
 function requireCitedEvidence(draft: Draft, ledger: ToolLedger): void {
   if (!draft.evidence.some((e) => e.claim)) {
-    throw new RoleRunError(
-      "reachability",
-      "malformed",
-      "result carries no evidence-linked claims",
-    );
+    throw new RoleRunError("reachability", "malformed", "result carries no evidence-linked claims");
   }
   for (const e of draft.evidence) {
     if (!e.claim) continue;

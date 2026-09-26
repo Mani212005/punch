@@ -23,10 +23,17 @@ if (result.status !== "completed" || result.traceErrors.length > 0) {
   throw new Error(`recording failed: ${result.status} ${result.traceErrors.join("; ")}`);
 }
 // Tool inputs carry the fixture repo's absolute path; store it repo-relative so the artifact is portable.
-const text = fs.readFileSync(result.tracePath, "utf-8").split(`${root}/`).join("").split(root).join(".");
+const text = fs
+  .readFileSync(result.tracePath, "utf-8")
+  .split(`${root}/`)
+  .join("")
+  .split(root)
+  .join(".");
 for (const dest of ["traces", "apps/web/public/traces"]) {
   fs.mkdirSync(path.join(root, dest), { recursive: true });
   fs.writeFileSync(path.join(root, dest, "investigation-roles.jsonl"), text);
 }
 fs.rmSync(runsDir, { recursive: true, force: true });
-console.log(`recorded ${result.events.length} events to traces/investigation-roles.jsonl (${result.status})`);
+console.log(
+  `recorded ${result.events.length} events to traces/investigation-roles.jsonl (${result.status})`,
+);

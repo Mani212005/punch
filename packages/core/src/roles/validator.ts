@@ -144,7 +144,8 @@ export async function runValidationStep(input: ValidationStepInput): Promise<Dra
 
   const value: ValidationStepResult = { validations };
   const parsed = ValidationStepResultSchema.safeParse(value);
-  if (!parsed.success) throw new Error(`validator produced an invalid result: ${parsed.error.message}`);
+  if (!parsed.success)
+    throw new Error(`validator produced an invalid result: ${parsed.error.message}`);
   return {
     value: parsed.data,
     evidence,

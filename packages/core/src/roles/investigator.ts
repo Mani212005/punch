@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type {
-  RecommendedAction} from "@punch/shared";
+import type { RecommendedAction } from "@punch/shared";
 import {
   InvestigationFinding,
   type ImpactLevel,
@@ -57,7 +56,10 @@ export function recommendAction(input: {
 }): RecommendedAction {
   if (input.sandbox === "FAIL" || input.sandbox === "NOT_RUN") return "HUMAN_REVIEW";
   if (input.impact === "HIGH") return "HUMAN_REVIEW";
-  if (input.reachability === "UNKNOWN" && (input.severity === "HIGH" || input.severity === "CRITICAL")) {
+  if (
+    input.reachability === "UNKNOWN" &&
+    (input.severity === "HIGH" || input.severity === "CRITICAL")
+  ) {
     return "HUMAN_REVIEW";
   }
   if (input.reachability === "REACHABLE" && input.sandbox === "PASS") return "UPGRADE";
@@ -100,11 +102,7 @@ Rules:
 
 function requireCitedEvidence(draft: Draft): void {
   if (!draft.evidence.some((e) => e.claim)) {
-    throw new RoleRunError(
-      "investigator",
-      "malformed",
-      "result carries no evidence-linked claims",
-    );
+    throw new RoleRunError("investigator", "malformed", "result carries no evidence-linked claims");
   }
   const uncited = draft.evidence.filter((e) => e.claim && !e.source.startsWith("blackboard:"));
   if (uncited.length > 0) {

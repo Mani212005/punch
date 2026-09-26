@@ -20,7 +20,10 @@ import { fixtureRunOptions, loadRunFixture } from "./fixture.js";
 import type { RunResult } from "./loop.js";
 import { runLoop } from "./loop.js";
 
-const FIXTURE = path.resolve(fileURLToPath(import.meta.url), "../../../../../fixtures/runs/investigation");
+const FIXTURE = path.resolve(
+  fileURLToPath(import.meta.url),
+  "../../../../../fixtures/runs/investigation",
+);
 const runsDir = fs.mkdtempSync(path.join(os.tmpdir(), "punch-investigation-"));
 afterAll(() => fs.rmSync(runsDir, { recursive: true, force: true }));
 
@@ -52,7 +55,16 @@ describe("E2 investigation run (offline fixture)", () => {
     // All eight slots were routed and assigned.
     const assigned = of(r, "slot.assigned");
     expect(assigned.map((e) => e.role).sort()).toEqual(
-      ["critic", "executor", "impact", "inventory", "investigator", "planner", "reachability", "researcher"].sort(),
+      [
+        "critic",
+        "executor",
+        "impact",
+        "inventory",
+        "investigator",
+        "planner",
+        "reachability",
+        "researcher",
+      ].sort(),
     );
 
     // The planner emitted a valid investigation DAG: inventory + research in parallel,
@@ -129,9 +141,9 @@ describe("E2 investigation run (offline fixture)", () => {
       ["unused-vuln-lib", "NOT_REACHABLE"],
     ]);
     for (const f of findings) {
-      expect(InvestigationFinding.safeParse({ ...f, sandbox: null, critic: "PENDING" }).success).toBe(
-        true,
-      );
+      expect(
+        InvestigationFinding.safeParse({ ...f, sandbox: null, critic: "PENDING" }).success,
+      ).toBe(true);
       expect(f.claimIds.length).toBeGreaterThan(0);
     }
     const qs = findings.find((f) => f.dependency === "qs")!;
@@ -186,8 +198,12 @@ describe("committed investigation trace", () => {
     expect(new Set(events.map((e) => e.runId)).size).toBe(1);
     for (const e of events) expect(TraceEventSchema.safeParse(e).success).toBe(true);
     const verdicts = events.filter((e) => e.kind === "critic.verdict");
-    expect(verdicts.some((e) => e.kind === "critic.verdict" && e.verdict === "rejected")).toBe(true);
-    expect(verdicts.some((e) => e.kind === "critic.verdict" && e.verdict === "accepted")).toBe(true);
+    expect(verdicts.some((e) => e.kind === "critic.verdict" && e.verdict === "rejected")).toBe(
+      true,
+    );
+    expect(verdicts.some((e) => e.kind === "critic.verdict" && e.verdict === "accepted")).toBe(
+      true,
+    );
     const written = events.filter((e) => e.kind === "blackboard.written");
     const findingsKey = written.some(
       (e) => e.kind === "blackboard.written" && e.key === "findings_2",
