@@ -284,13 +284,15 @@ export function toolsForRole(role: SlotRole): ToolSpec[] {
     case "researcher":
     case "inventory":
     case "impact":
-      return Object.values(TOOL_SPECS).filter((spec) => !spec.irreversible);
+    case "reachability":
+      return [
+        ...READ_ONLY_TOOLS,
+        ...Object.values(TOOL_SPECS).filter((spec) => !spec.irreversible),
+      ];
     case "executor":
       return [READ_BLACKBOARD_TOOL, LIST_BLACKBOARD_TOOL, TOOL_SPECS["github_create_issue"]!];
     case "critic":
-    case "reachability":
     case "investigator":
-      // E1 adds the repository source tools for reachability; until then reads only.
       return READ_ONLY_TOOLS;
     case "planner":
       return [];
