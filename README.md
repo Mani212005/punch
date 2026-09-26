@@ -18,6 +18,8 @@ pnpm punch --help   # runs the engine CLI (after pnpm build)
 
 `pnpm punch <args>` is shorthand for `pnpm --filter @punch/engine exec node bin/punch.js <args>`. Every subcommand is a stub until its plan.md step lands and exits non-zero with "not implemented yet".
 
+`pnpm install` also installs a pre-commit hook that formats staged files with prettier (CI still enforces `pnpm format:check`).
+
 Copy `.env.example` to `.env` for the provider key names (values are never committed).
 
 ## Layout
