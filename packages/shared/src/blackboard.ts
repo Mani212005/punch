@@ -5,6 +5,7 @@ export const Evidence = z.object({
   url: z.string().optional(),
   quote: z.string().optional(),
   toolCallId: z.string().optional(),
+  traceSeq: z.number().int().nonnegative().optional(),
 });
 export type Evidence = z.infer<typeof Evidence>;
 
