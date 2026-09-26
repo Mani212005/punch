@@ -822,31 +822,32 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
         review: async (draft, attempt) => {
           if (handler.reviewed === false) return acceptedVerdict(subtask.id);
           try {
-            const verdict = await withRetries(() =>
-              invoke(
-                criticSlot,
-                subtask.id,
-                "medium",
-                ledger,
-                (deps) =>
-                  reviewDraft(
-                    { ...deps, jev, blackboard, ledger, emit: (e) => emit(e as EventBody) },
-                    {
-                      subtask,
-                      draft,
-                      producer: { role: role as "researcher", agentId: slot.agentId },
-                      attempt,
-                    },
-                  ),
-                { watch: supervisor.watch(criticSlot, { subtaskId: subtask.id }), log: criticLog },
-              ),
+            const verdict = await supervised(
+              criticSlot,
+              subtask,
+              "medium",
+              ledger,
+              criticLog,
+              (deps) =>
+                reviewDraft(
+                  { ...deps, jev, blackboard, ledger, emit: (e) => emit(e as EventBody) },
+                  {
+                    subtask,
+                    draft,
+                    producer: { role: role as "researcher", agentId: slot.agentId },
+                    attempt,
+                  },
+                ),
             );
             criticSlot.complete(subtask.id);
             return verdict;
           } catch (err) {
             if (err instanceof StopError) throw err;
             const detail = errText(err);
-            criticSlot.fail(subtask.id, { kind: "failed", detail });
+            // An exhausted critic slot was already traced by the supervisor.
+            if (!(err instanceof SlotExhaustedError)) {
+              criticSlot.fail(subtask.id, { kind: "failed", detail });
+            }
             unreviewed = `unreviewed: the critic failed (${detail})`;
             return acceptedVerdict(subtask.id);
           }
