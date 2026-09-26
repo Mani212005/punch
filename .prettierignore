@@ -1,0 +1,10 @@
+design/
+plan.md
+spec.md
+pnpm-lock.yaml
+dist/
+.next/
+.turbo/
+coverage/
+traces/
+fixtures/

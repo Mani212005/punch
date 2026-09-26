@@ -1,8 +1,10 @@
 node_modules/
-.lavish/
-runs/
 dist/
 .next/
-.env
 .turbo/
+*.tsbuildinfo
 coverage/
+runs/
+.env
+.env.local
+.DS_Store
