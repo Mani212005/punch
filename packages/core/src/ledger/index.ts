@@ -1,11 +1,4 @@
-
-import type {
-  Claim,
-  ClaimActor,
-  EvidenceRecord,
-  TraceEvent,
-  SlotRole,
-} from "@punch/shared";
+import type { Claim, ClaimActor, EvidenceRecord, TraceEvent, SlotRole } from "@punch/shared";
 
 import type { TraceSink } from "../blackboard.js";
 

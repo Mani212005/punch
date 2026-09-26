@@ -1,16 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { EvidenceLedger, ReportRenderer } from "./index.js";
-import type {
-  Claim,
-  EvidenceRecord,
-  TraceEvent,
-  InvestigationFinding} from "@punch/shared";
-
+import type { Claim, EvidenceRecord, TraceEvent, InvestigationFinding } from "@punch/shared";
 
 describe("EvidenceLedger", () => {
   it("should record and query evidence and claims", () => {
     const emitted: TraceEvent[] = [];
-    const sink = (e: TraceEvent) => { emitted.push(e); };
+    const sink = (e: TraceEvent) => {
+      emitted.push(e);
+    };
     const ledger = new EvidenceLedger("run-1", sink, () => 1000);
 
     const ev1: EvidenceRecord = {
@@ -109,7 +106,7 @@ describe("ReportRenderer", () => {
 
     ledger.recordEvidence(
       { role: "reachability" },
-      { id: "ev-1", kind: "file", ref: "src/api.ts", excerpt: "import foo", fetchedAt: 0 }
+      { id: "ev-1", kind: "file", ref: "src/api.ts", excerpt: "import foo", fetchedAt: 0 },
     );
     ledger.recordClaim({
       id: "c-1",
@@ -119,7 +116,7 @@ describe("ReportRenderer", () => {
       author: { role: "reachability" },
       evidenceRefs: ["ev-1"],
       status: "verified",
-      verifier: { role: "critic" }
+      verifier: { role: "critic" },
     });
 
     const findings: InvestigationFinding[] = [
@@ -136,7 +133,7 @@ describe("ReportRenderer", () => {
           exploitable: "unknown",
           summary: "imported in api",
           claimIds: ["c-1"],
-          affectedSymbols: []
+          affectedSymbols: [],
         },
         upgrade: { from: "2.1.4", to: "2.4.0" },
         upgradeImpact: { level: "LOW", detectedRisks: [], unknowns: [], claimIds: [] },
@@ -147,12 +144,12 @@ describe("ReportRenderer", () => {
           newFailures: [],
           fixedFailures: [],
           verdict: "PASS",
-          evidenceIds: []
+          evidenceIds: [],
         },
         critic: "ACCEPTED",
         recommendedAction: "UPGRADE",
-        claimIds: []
-      }
+        claimIds: [],
+      },
     ];
 
     const report = renderer.buildReport("example/repo", 143, 12, findings);
@@ -163,7 +160,7 @@ describe("ReportRenderer", () => {
     expect(report.summary.requiresHumanReview).toBe(0);
 
     const md = renderer.renderMarkdown(report);
-    
+
     // Check key strings from the golden format
     expect(md).toContain("PUNCH SECURITY INVESTIGATION");
     expect(md).toContain("Repository:\nexample/repo");

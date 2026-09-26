@@ -1,6 +1,4 @@
-import type {
-  InvestigationReport,
-  InvestigationFinding} from "@punch/shared";
+import type { InvestigationReport, InvestigationFinding } from "@punch/shared";
 
 import type { EvidenceLedger } from "./index.js";
 
@@ -90,7 +88,8 @@ ${s.requiresHumanReview}
       md += `Upgrade impact:\n${f.upgradeImpact?.level || "UNKNOWN"}\n\n`;
       md += `Sandbox validation:\n${f.sandbox?.verdict || "NOT_RUN"}\n\n`;
       md += `Critic:\n${f.critic}\n\n`;
-      const actionStr = f.recommendedAction === "UPGRADE" ? "Upgrade to " + toVer : f.recommendedAction;
+      const actionStr =
+        f.recommendedAction === "UPGRADE" ? "Upgrade to " + toVer : f.recommendedAction;
       md += `Recommended action:\n${actionStr}\n\n`;
 
       md += `[Create GitHub Issue]\n[Create Fix PR]\n`;
@@ -107,7 +106,9 @@ ${s.requiresHumanReview}
       ...(finding.upgradeImpact?.claimIds || []),
     ]);
 
-    const relevantClaims = report.claims.filter(c => claimIds.has(c.id) && c.status === "verified");
+    const relevantClaims = report.claims.filter(
+      (c) => claimIds.has(c.id) && c.status === "verified",
+    );
     if (relevantClaims.length === 0) return "No verified evidence available.";
 
     const lines: string[] = [];
@@ -117,7 +118,7 @@ ${s.requiresHumanReview}
       for (const ref of c.evidenceRefs) {
         if (!usedEvidence.has(ref)) {
           usedEvidence.add(ref);
-          const e = report.evidence.find(ev => ev.id === ref);
+          const e = report.evidence.find((ev) => ev.id === ref);
           if (e) {
             lines.push(`✓ ${e.ref} (${e.kind})`);
           } else {
