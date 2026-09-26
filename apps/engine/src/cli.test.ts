@@ -1,19 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { buildProgram, NotImplementedError } from "./cli.js";
+import { buildProgram } from "./cli.js";
 
-const cases: string[][] = [["serve"]];
-
-describe("punch CLI stubs", () => {
-  it.each(cases)("%s is a not-implemented stub", async (...args) => {
-    await expect(buildProgram().parseAsync(args, { from: "user" })).rejects.toBeInstanceOf(
-      NotImplementedError,
-    );
-  });
-
+describe("punch CLI", () => {
   it("lists every subcommand in help", () => {
     const help = buildProgram().helpInformation();
     for (const name of ["serve", "run", "kill", "approve", "deny", "config"]) {
       expect(help).toContain(name);
     }
+  });
+
+  it("registers the serve options", () => {
+    const serve = buildProgram().commands.find((command) => command.name() === "serve");
+    expect(serve).toBeDefined();
+    expect(serve?.options.map((option) => option.long)).toEqual(
+      expect.arrayContaining([
+        "--port",
+        "--host",
+        "--pairing-token",
+        "--viewer-token",
+        "--web-origin",
+        "--runs-dir",
+        "--config",
+      ]),
+    );
   });
 });

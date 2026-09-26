@@ -3,6 +3,7 @@ import { getConfigPath, loadConfig, ConfigError } from "./config/index.js";
 import { TestAdapterRegistry } from "./config/registry.js";
 import { killCommand } from "./kill.js";
 import { runCommand } from "./run.js";
+import { serveCommand } from "./server/serve.js";
 
 export class NotImplementedError extends Error {
   constructor(command: string) {
@@ -15,12 +16,6 @@ function collect(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
 
-function stub(command: string): () => never {
-  return () => {
-    throw new NotImplementedError(command);
-  };
-}
-
 export function buildProgram(): Command {
   const program = new Command("punch")
     .description("Punch: multi-agent engine that survives agent failure")
@@ -29,7 +24,48 @@ export function buildProgram(): Command {
   program
     .command("serve")
     .description("start the engine HTTP API and SSE server")
-    .action(stub("serve"));
+    .option("-p, --port <port>", "port to listen on", "4141")
+    .option("--host <host>", "interface to bind (default localhost)", "127.0.0.1")
+    .option("--pairing-token <token>", "control token (generated when absent)")
+    .option(
+      "--viewer-token <token>",
+      "read-only token for run events and trace (generated when absent)",
+    )
+    .option(
+      "--web-origin <origin>",
+      "allowed CORS origin, repeatable (e.g. http://localhost:3000)",
+      collect,
+      [],
+    )
+    .option("--runs-dir <dir>", "directory holding runs/<runId>", "runs")
+    .option("--sessions-dir <dir>", "directory holding orchestrator sessions")
+    .option("-c, --config <path>", "path to config file")
+    .action(
+      async (options: {
+        port: string;
+        host: string;
+        pairingToken?: string;
+        viewerToken?: string;
+        webOrigin: string[];
+        runsDir: string;
+        sessionsDir?: string;
+        config?: string;
+      }) => {
+        const running = await serveCommand({
+          port: Number(options.port),
+          host: options.host,
+          runsDir: options.runsDir,
+          webOrigins: options.webOrigin,
+          ...(options.pairingToken ? { pairingToken: options.pairingToken } : {}),
+          ...(options.viewerToken ? { viewerToken: options.viewerToken } : {}),
+          ...(options.sessionsDir ? { sessionsDir: options.sessionsDir } : {}),
+          ...(options.config ? { config: options.config } : {}),
+        });
+        process.once("SIGINT", () => {
+          void running.close().then(() => process.exit(0));
+        });
+      },
+    );
   program
     .command("run")
     .description("run the reference task against a GitHub repository")
