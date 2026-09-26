@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SlotRole } from "./common.js";
 import { BlackboardEntry } from "./blackboard.js";
 import { FailureReason } from "./slots.js";
 import { Subtask } from "./plan.js";
@@ -8,6 +9,10 @@ export const Finding = z.object({
   problem: z.string(),
   severity: z.enum(["info", "warning", "blocker"]).default("warning"),
   evidenceRef: z.string().optional(),
+  /** A rejection may ask for new work; the run loop hands it to the planner as a targeted replan. */
+  requestedTask: z
+    .object({ title: z.string(), description: z.string(), roleHint: SlotRole.optional() })
+    .optional(),
 });
 export type Finding = z.infer<typeof Finding>;
 

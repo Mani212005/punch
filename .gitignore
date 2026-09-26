@@ -4,7 +4,7 @@ dist/
 .turbo/
 *.tsbuildinfo
 coverage/
-runs/
+/runs/
 .env
 .env.local
 .DS_Store
