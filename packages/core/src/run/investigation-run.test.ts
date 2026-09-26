@@ -175,8 +175,8 @@ describe("E2 investigation run (offline fixture)", () => {
 });
 
 describe("committed investigation trace", () => {
-  it("traces/investigation.jsonl replays the REACHABLE / NOT_REACHABLE story", () => {
-    const file = path.resolve(FIXTURE, "../../../../../traces/investigation.jsonl");
+  it("traces/investigation-roles.jsonl replays the REACHABLE / NOT_REACHABLE story", () => {
+    const file = path.resolve(FIXTURE, "../../../../../traces/investigation-roles.jsonl");
     if (!fs.existsSync(file)) return; // recorded with scripts/record-investigation.mjs
     const events = parseTrace(fs.readFileSync(file, "utf-8"));
     expect(events[0]!.kind).toBe("run.started");

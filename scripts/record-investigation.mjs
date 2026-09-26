@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Records traces/investigation.jsonl: an offline run of fixtures/runs/investigation with one
+// Records traces/investigation-roles.jsonl: an offline run of fixtures/runs/investigation with one
 // REACHABLE and one NOT_REACHABLE finding and a critic rejection -> targeted reachability
 // replan -> accept cycle.
 //
@@ -26,7 +26,7 @@ if (result.status !== "completed" || result.traceErrors.length > 0) {
 const text = fs.readFileSync(result.tracePath, "utf-8").split(`${root}/`).join("").split(root).join(".");
 for (const dest of ["traces", "apps/web/public/traces"]) {
   fs.mkdirSync(path.join(root, dest), { recursive: true });
-  fs.writeFileSync(path.join(root, dest, "investigation.jsonl"), text);
+  fs.writeFileSync(path.join(root, dest, "investigation-roles.jsonl"), text);
 }
 fs.rmSync(runsDir, { recursive: true, force: true });
-console.log(`recorded ${result.events.length} events to traces/investigation.jsonl (${result.status})`);
+console.log(`recorded ${result.events.length} events to traces/investigation-roles.jsonl (${result.status})`);
