@@ -17,6 +17,11 @@ import RoutingCardTile from "./components/RoutingCardTile";
 import TimelineTile from "./components/TimelineTile";
 import SubtaskInspectorModal from "./components/SubtaskInspectorModal";
 import ReplayPicker from "./components/ReplayPicker";
+import InvestigationReportTile from "./components/InvestigationReportTile";
+import EvidenceLedgerTile from "./components/EvidenceLedgerTile";
+import SandboxTile from "./components/SandboxTile";
+import ApprovalCardTile from "./components/ApprovalCardTile";
+import { findInvestigationReport } from "@/lib/trace/investigation";
 
 interface WatchBoardProps {
   initialTraceId?: string;
@@ -70,6 +75,8 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
     });
   };
 
+  const investigationReport = findInvestigationReport(state.blackboard);
+
   return (
     <main>
       <div
@@ -115,6 +122,7 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
           <SlotsTile
             run={state.run}
             slots={state.slots}
+            seenRoles={state.seenRoles}
             planSubtasksCount={state.plan.subtasks.length}
           />
 
@@ -138,6 +146,34 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
 
           {/* Routing Card: 5 cols (Row 4, directly under Plan Graph) */}
           <RoutingCardTile routingMap={state.routing} slots={state.slots} mode={state.run.mode} />
+
+          {/* Investigation views: report, ledger + sandbox, approval */}
+          <InvestigationReportTile
+            blackboard={state.blackboard}
+            criticVerdicts={state.criticVerdicts}
+          />
+          <EvidenceLedgerTile
+            claims={state.claims}
+            evidence={state.evidence}
+            logs={state.logs.entries}
+          />
+          <div
+            className="c6"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--bz-gap)",
+              minWidth: 0,
+            }}
+          >
+            <SandboxTile sandboxRuns={state.sandbox} />
+            <ApprovalCardTile
+              remediations={state.remediations}
+              approvals={state.approvals}
+              sandboxRuns={state.sandbox}
+              report={investigationReport}
+            />
+          </div>
 
           {/* Row 5: Timeline Gantt with Replay Controls & Scrubber (12 cols) */}
           <TimelineTile

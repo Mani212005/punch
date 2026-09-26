@@ -28,26 +28,27 @@ interface NodeLayout {
   fontSizeMeta: number;
 }
 
-// Fixed precise layout for the reference 7-subtask DAG
-const REFERENCE_7_LAYOUT: Record<string, NodeLayout> = {
-  s1: { id: "s1", x: 14, y: 96, width: 110, height: 46, fontSizeTitle: 11, fontSizeMeta: 9 },
-  s2: { id: "s2", x: 158, y: 36, width: 110, height: 46, fontSizeTitle: 11, fontSizeMeta: 9 },
-  s3: { id: "s3", x: 158, y: 156, width: 110, height: 46, fontSizeTitle: 11, fontSizeMeta: 9 },
-  s4: { id: "s4", x: 296, y: 96, width: 118, height: 46, fontSizeTitle: 11, fontSizeMeta: 9 },
-  s5: { id: "s5", x: 418, y: 16, width: 96, height: 40, fontSizeTitle: 10, fontSizeMeta: 9 },
-  s6: { id: "s6", x: 418, y: 96, width: 96, height: 40, fontSizeTitle: 10, fontSizeMeta: 9 },
-  s7: { id: "s7", x: 418, y: 176, width: 96, height: 40, fontSizeTitle: 10, fontSizeMeta: 9 },
-};
-
-const REFERENCE_7_EDGES = [
-  { from: "s1", to: "s2", d: "M124 114 L158 66" },
-  { from: "s1", to: "s3", d: "M124 124 L158 172" },
-  { from: "s2", to: "s4", d: "M268 66 L296 104" },
-  { from: "s3", to: "s4", d: "M268 172 L296 134" },
-  { from: "s4", to: "s5", d: "M414 100 L450 56" },
-  { from: "s5", to: "s6", d: "M466 56 L466 96" },
-  { from: "s6", to: "s7", d: "M466 136 L466 176" },
-];
+/** Wrap a title into short lines so SVG labels never truncate silently. */
+export function wrapNodeTitle(title: string, maxChars = 16, maxLines = 2): string[] {
+  const words = title.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (word.length > maxChars && current === "") {
+      lines.push(word);
+      continue;
+    }
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.slice(0, maxLines);
+}
 
 export default function PlanGraphTile({
   plan,
@@ -59,8 +60,6 @@ export default function PlanGraphTile({
   selectedSubtaskId,
 }: PlanGraphTileProps) {
   const subtasks = plan.subtasks.length > 0 ? plan.subtasks : [];
-  const isReference7 =
-    subtasks.length === 7 && subtasks[0]?.id === "s1" && subtasks[6]?.id === "s7";
 
   // Dynamic layout generator for arbitrary subtask DAGs
   const nodeMap = new Map<string, Subtask>();
@@ -69,8 +68,8 @@ export default function PlanGraphTile({
   }
 
   // Calculate layout coordinates
-  const layoutMap: Record<string, NodeLayout> = isReference7 ? REFERENCE_7_LAYOUT : {};
-  if (!isReference7 && subtasks.length > 0) {
+  const layoutMap: Record<string, NodeLayout> = {};
+  if (subtasks.length > 0) {
     // Determine topological layers
     const layerMap = new Map<string, number>();
     const getLayer = (id: string, visited = new Set<string>()): number => {
@@ -98,58 +97,74 @@ export default function PlanGraphTile({
       layers[l].push(st.id);
     });
 
-    const colWidth = 110;
-    const colGap = 34;
+    // Top-down layers keep the graph narrow enough to fit the tile at ~1:1 scale, so
+    // labels stay readable at desktop and phone width instead of shrinking with the SVG.
+    const nodeWidth = 118;
+    const nodeHeight = 62;
+    const colGap = 14;
+    const rowStep = nodeHeight + 38;
+    const maxPerLayer = Math.max(...layers.map((l) => l?.length ?? 0));
+    const fullWidth = maxPerLayer * nodeWidth + (maxPerLayer - 1) * colGap;
     layers.forEach((layerNodes, lIdx) => {
-      const x = 14 + lIdx * (colWidth + colGap);
       const count = layerNodes.length;
-      const totalH = 220;
+      const rowWidth = count * nodeWidth + (count - 1) * colGap;
+      const startX = 8 + (fullWidth - rowWidth) / 2;
       layerNodes.forEach((id, nIdx) => {
-        const height = count > 2 ? 38 : 46;
-        const y = 20 + (nIdx + 0.5) * (totalH / count) - height / 2;
         layoutMap[id] = {
           id,
-          x,
-          y,
-          width: colWidth,
-          height,
-          fontSizeTitle: 10,
+          x: startX + nIdx * (nodeWidth + colGap),
+          y: 8 + lIdx * rowStep,
+          width: nodeWidth,
+          height: nodeHeight,
+          fontSizeTitle: 11,
           fontSizeMeta: 9,
         };
       });
     });
   }
 
-  // Generate edges
-  const edges: { from: string; to: string; d: string }[] = isReference7 ? REFERENCE_7_EDGES : [];
+  // Generate edges from dependencies against the final node layout, so edges
+  // always meet the nodes even when node sizes change.
+  const edges: { from: string; to: string; d: string }[] = [];
 
-  if (!isReference7 && subtasks.length > 0) {
+  if (subtasks.length > 0) {
     subtasks.forEach((st) => {
       const toNode = layoutMap[st.id];
       if (!toNode) return;
       st.dependsOn.forEach((fromId) => {
         const fromNode = layoutMap[fromId];
         if (!fromNode) return;
-        const x1 = fromNode.x + fromNode.width;
-        const y1 = fromNode.y + fromNode.height / 2;
-        const x2 = toNode.x;
-        const y2 = toNode.y + toNode.height / 2;
+        const x1 = fromNode.x + fromNode.width / 2;
+        const y1 = fromNode.y + fromNode.height;
+        const x2 = toNode.x + toNode.width / 2;
+        const y2 = toNode.y;
         edges.push({
           from: fromId,
           to: st.id,
-          d: `M${x1} ${y1} L${x2} ${y2}`,
+          d: `M${x1} ${y1} C${x1} ${y1 + 18} ${x2} ${y2 - 18} ${x2} ${y2}`,
         });
       });
     });
   }
 
-  const researcherReplaced = slots.researcher?.replaced && slots.researcher.replaced.length > 0;
-  const isTakeoverHappened = Boolean(activeTakeover || researcherReplaced);
-
-  // Taken-over caption time: same slot.failed timestamp the banner and kill marker use.
+  // Taken-over caption time: the slot.failed timestamp the banner and kill marker use.
   const failedTs = activeTakeover ? activeTakeover.ts - (activeTakeover.detectionMs ?? 0) : 0;
   const takenOverTime =
-    activeTakeover && runStartTime ? formatTime(Math.max(0, failedTs - runStartTime)) : "00:13";
+    activeTakeover && runStartTime ? formatTime(Math.max(0, failedTs - runStartTime)) : null;
+
+  // Size the SVG to its content so the graph never leaves large empty space.
+  const contentWidth =
+    subtasks.length > 0
+      ? Math.max(
+          ...subtasks.map((st) => (layoutMap[st.id]?.x ?? 0) + (layoutMap[st.id]?.width ?? 0)),
+        ) + 8
+      : 240;
+  const contentHeight =
+    subtasks.length > 0
+      ? Math.max(
+          ...subtasks.map((st) => (layoutMap[st.id]?.y ?? 0) + (layoutMap[st.id]?.height ?? 0)),
+        ) + 26
+      : 120;
 
   return (
     <div className="bz-tile c5">
@@ -160,10 +175,10 @@ export default function PlanGraphTile({
       <div style={{ position: "relative", width: "100%" }}>
         <svg
           className="fig"
-          viewBox="0 0 520 240"
+          viewBox={`0 0 ${contentWidth} ${contentHeight}`}
           role="img"
           aria-label={`Subtask graph with ${subtasks.length} nodes`}
-          style={{ width: "100%", height: "auto", minHeight: "220px", display: "block" }}
+          style={{ width: "100%", height: "auto", display: "block" }}
         >
           <defs>
             <marker
@@ -222,8 +237,7 @@ export default function PlanGraphTile({
             const workerAgentId = spanWorker ?? slotWorker;
             const workerName = workerAgentId ? formatAgentDisplayName(workerAgentId) : null;
 
-            const isNodeTakenOver =
-              (activeTakeover?.subtaskId ?? (isTakeoverHappened ? "s3" : undefined)) === st.id;
+            const isNodeTakenOver = activeTakeover?.subtaskId === st.id;
             const isApprovalNode = st.id === "s7" && isPending;
 
             const nodeClass = isDone ? "node done" : isRunning ? "node run" : "node wait";
@@ -244,12 +258,12 @@ export default function PlanGraphTile({
             }
 
             const centerX = layout.x + layout.width / 2;
-            const titleY = layout.y + layout.height * 0.42;
-            const metaY = layout.y + layout.height * 0.74;
-
-            // SVG text cannot wrap: two short lines (id, then truncated title).
-            const shortTitle =
-              st.title.length > 15 ? `${st.title.slice(0, 14).trimEnd()}…` : st.title;
+            // Wrapped title lines (never truncated) sit between the id and the meta line.
+            const titleLines = wrapNodeTitle(st.title, 15, 2);
+            const idY = layout.y + 12;
+            const titleStartY = layout.y + 26;
+            const titleStep = layout.fontSizeTitle + 3;
+            const metaY = layout.y + layout.height - 6;
 
             return (
               <g
@@ -272,7 +286,7 @@ export default function PlanGraphTile({
                 />
                 <text
                   x={centerX}
-                  y={titleY - 7}
+                  y={idY}
                   fontSize={layout.fontSizeMeta}
                   fontWeight="700"
                   textAnchor="middle"
@@ -282,17 +296,20 @@ export default function PlanGraphTile({
                   {st.id}
                   <title>{`${st.id} · ${st.title}`}</title>
                 </text>
-                <text
-                  x={centerX}
-                  y={titleY + 6}
-                  fontSize={layout.fontSizeTitle}
-                  fontWeight="700"
-                  textAnchor="middle"
-                  className={textClass}
-                  onClick={() => onSelectSubtask(st)}
-                >
-                  {shortTitle}
-                </text>
+                {titleLines.map((line, lineIdx) => (
+                  <text
+                    key={`${st.id}-title-${lineIdx}`}
+                    x={centerX}
+                    y={titleStartY + lineIdx * titleStep}
+                    fontSize={layout.fontSizeTitle}
+                    fontWeight="700"
+                    textAnchor="middle"
+                    className={textClass}
+                    onClick={() => onSelectSubtask(st)}
+                  >
+                    {line}
+                  </text>
+                ))}
                 <text
                   x={centerX}
                   y={metaY}
@@ -307,14 +324,17 @@ export default function PlanGraphTile({
                 {/* Taken-over caption under the replaced subtask node */}
                 {isNodeTakenOver && (
                   <text
-                    x={centerX}
-                    y={layout.y + layout.height + 18}
+                    x={layout.x}
+                    y={layout.y + layout.height + 14}
                     fontSize="9"
-                    textAnchor="middle"
+                    textAnchor="start"
                     className="t-muted"
+                    stroke="var(--bz-paper)"
+                    strokeWidth="3"
+                    paintOrder="stroke"
                   >
-                    was {formatAgentDisplayName(activeTakeover?.failedAgentId)} · taken over{" "}
-                    {takenOverTime}
+                    was {formatAgentDisplayName(activeTakeover?.failedAgentId)}
+                    {takenOverTime ? ` · ${takenOverTime}` : " · taken over"}
                   </text>
                 )}
               </g>
@@ -327,10 +347,10 @@ export default function PlanGraphTile({
           {subtasks.map((st) => {
             const layout = layoutMap[st.id];
             if (!layout) return null;
-            const leftPct = (layout.x / 520) * 100;
-            const topPct = (layout.y / 240) * 100;
-            const widthPct = (layout.width / 520) * 100;
-            const heightPct = (layout.height / 240) * 100;
+            const leftPct = (layout.x / contentWidth) * 100;
+            const topPct = (layout.y / contentHeight) * 100;
+            const widthPct = (layout.width / contentWidth) * 100;
+            const heightPct = (layout.height / contentHeight) * 100;
             return (
               <button
                 key={`btn-overlay-${st.id}`}

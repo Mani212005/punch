@@ -5,26 +5,28 @@ export default function Hero() {
   return (
     <>
       <div className="bz-tile c8" style={{ gap: "14px", padding: "22px" }}>
-        <div className="bz-label">multi-agent system · runs on your machine</div>
-        <h1 className="bz-h1">Agents that plan, delegate, and take over for each other.</h1>
+        <div className="bz-label">security investigation · runs on your machine</div>
+        <h1 className="bz-h1">Does this vulnerability actually matter to your repo?</h1>
         <p className="bz-lead bz-muted" style={{ maxWidth: "52ch" }}>
-          Use the models you already pay for. Jev decides who does what. When an agent dies, the
-          next one picks up its work with everything it had fetched. Every decision is in the trace.
+          Punch investigates whether a vulnerability affects your application, proves reachability,
+          analyzes upgrade impact, validates fixes in isolation, challenges its own conclusions, and
+          recovers when an agent fails. Every conclusion has an evidence trail; irreversible actions
+          wait for your approval.
         </p>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <Link
-            href="/watch/takeover"
+            href="/watch/investigation"
             className="bz-btn primary"
             style={{ textDecoration: "none", display: "inline-block" }}
           >
-            Watch the takeover run
+            Watch the investigation run
           </Link>
           <a
             href="#features"
             className="bz-btn"
             style={{ textDecoration: "none", display: "inline-block" }}
           >
-            Read the trace format
+            How the investigation works
           </a>
         </div>
       </div>

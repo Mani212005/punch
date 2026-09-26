@@ -4,18 +4,20 @@ import type {
   BoardBudgetState,
   BoardRunState,
   BoardState,
+  ClaimLedgerItem,
   CriticVerdictItem,
+  EvidenceLedgerItem,
   LogEntry,
   PlanGraphState,
+  RemediationProposal,
   ReplacedAgent,
   RoleRoutingState,
+  SandboxRunBoardState,
   SlotLaneState,
   TakeoverBannerState,
   TimelineMarker,
   TimelineSpan,
 } from "./types";
-
-const DEFAULT_SLOT_ROLES: SlotRole[] = ["planner", "researcher", "executor", "critic"];
 
 function createInitialSlotLane(role: SlotRole): SlotLaneState {
   return {
@@ -80,6 +82,11 @@ export function createInitialBoardState(): BoardState {
     },
     approvals: [],
     criticVerdicts: [],
+    claims: {},
+    evidence: {},
+    sandbox: {},
+    remediations: [],
+    seenRoles: [],
     blackboard: {},
     finalReport: null,
     replans: [],
@@ -108,6 +115,14 @@ function appendLogEntry(logs: BoardState["logs"], entry: LogEntry): BoardState["
   };
 
   return { entries, byRole, byAgent };
+}
+
+/**
+ * Records that a slot role has appeared in this trace. Only seen roles render
+ * slot cards, so roles with no events never show "unassigned" placeholders.
+ */
+function markRoleSeen(seenRoles: BoardState["seenRoles"], role: SlotRole): BoardState["seenRoles"] {
+  return seenRoles.includes(role) ? seenRoles : [...seenRoles, role];
 }
 
 export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
@@ -274,6 +289,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
       return {
         ...next,
         slots,
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -333,6 +349,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
         slots,
         plan: { subtasks },
         timeline: { ...next.timeline, spans },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -384,6 +401,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           ...next.slots,
           [event.role]: slot,
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -414,6 +432,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           ...next.slots,
           [event.role]: slot,
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -464,6 +483,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           ...next.timeline,
           spans: [...next.timeline.spans, span],
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -632,6 +652,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           ...next.timeline,
           markers: [...next.timeline.markers, marker],
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -682,6 +703,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           ...next.timeline,
           markers: [...next.timeline.markers, marker],
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -730,6 +752,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           ...next.timeline,
           markers: [...next.timeline.markers, marker],
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -794,6 +817,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           ...next.timeline,
           markers: [...next.timeline.markers, marker],
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -869,6 +893,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           active: activeBanner,
           history,
         },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -908,6 +933,7 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
           [event.role]: slot,
         },
         plan: { subtasks },
+        seenRoles: markRoleSeen(next.seenRoles, event.role),
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -941,6 +967,258 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
       return {
         ...next,
         criticVerdicts: [...next.criticVerdicts, verdictItem],
+        logs: appendLogEntry(next.logs, logEntry),
+      };
+    }
+
+    case "claim.recorded": {
+      const item: ClaimLedgerItem = {
+        claim: event.claim,
+        recordedTs: event.ts,
+      };
+
+      const logEntry: LogEntry = {
+        seq: event.seq,
+        ts: event.ts,
+        role: event.claim.author.role === "validator" ? undefined : event.claim.author.role,
+        agentId: event.claim.author.agentId,
+        kind: event.kind,
+        type: "claim",
+        text: `Claim ${event.claim.id} recorded: ${event.claim.text}`,
+        claimInfo: {
+          claimId: event.claim.id,
+          status: event.claim.status,
+          verifier: event.claim.verifier,
+          rationale: event.claim.rationale,
+        },
+      };
+
+      return {
+        ...next,
+        claims: {
+          ...next.claims,
+          [event.claim.id]: item,
+        },
+        seenRoles:
+          event.claim.author.role === "validator"
+            ? next.seenRoles
+            : markRoleSeen(next.seenRoles, event.claim.author.role),
+        logs: appendLogEntry(next.logs, logEntry),
+      };
+    }
+
+    case "claim.verified":
+    case "claim.refuted": {
+      const prev = next.claims[event.claimId];
+      const status = event.kind === "claim.verified" ? "verified" : "refuted";
+      const claim: ClaimLedgerItem["claim"] = prev
+        ? { ...prev.claim, status, verifier: event.verifier, rationale: event.rationale }
+        : {
+            id: event.claimId,
+            text: "(claim recorded off-trace)",
+            kind: "other",
+            findingId: "",
+            author: { role: "investigator" },
+            evidenceRefs: [],
+            status,
+            verifier: event.verifier,
+            rationale: event.rationale,
+          };
+      const item: ClaimLedgerItem = {
+        claim,
+        recordedTs: prev?.recordedTs ?? event.ts,
+        verifiedTs: event.ts,
+        verifiedRationale: event.rationale,
+      };
+
+      const logEntry: LogEntry = {
+        seq: event.seq,
+        ts: event.ts,
+        kind: event.kind,
+        type: "claim",
+        text: `Claim ${event.claimId} ${status} by ${event.verifier?.role ?? "unknown"}${event.rationale ? `: ${event.rationale}` : ""}`,
+        claimInfo: {
+          claimId: event.claimId,
+          status,
+          verifier: event.verifier,
+          rationale: event.rationale,
+        },
+      };
+
+      return {
+        ...next,
+        claims: {
+          ...next.claims,
+          [event.claimId]: item,
+        },
+        logs: appendLogEntry(next.logs, logEntry),
+      };
+    }
+
+    case "evidence.recorded": {
+      const item: EvidenceLedgerItem = {
+        evidence: event.evidence,
+        role: event.role,
+        agentId: event.agentId,
+        subtaskId: event.subtaskId,
+        recordedTs: event.ts,
+      };
+
+      const logEntry: LogEntry = {
+        seq: event.seq,
+        ts: event.ts,
+        role: event.role === "validator" ? undefined : event.role,
+        agentId: event.agentId,
+        subtaskId: event.subtaskId,
+        kind: event.kind,
+        type: "evidence",
+        text: `Evidence ${event.evidence.id} recorded (${event.evidence.kind}): ${event.evidence.ref}`,
+        evidenceInfo: {
+          evidenceId: event.evidence.id,
+          kind: event.evidence.kind,
+          ref: event.evidence.ref,
+        },
+      };
+
+      return {
+        ...next,
+        evidence: {
+          ...next.evidence,
+          [event.evidence.id]: item,
+        },
+        seenRoles:
+          event.role === "validator" ? next.seenRoles : markRoleSeen(next.seenRoles, event.role),
+        logs: appendLogEntry(next.logs, logEntry),
+      };
+    }
+
+    case "sandbox.started": {
+      const run: SandboxRunBoardState = next.sandbox[event.findingId] ?? {
+        findingId: event.findingId,
+        dependency: event.dependency,
+        from: event.from,
+        to: event.to,
+        isolation: event.isolation,
+        startedTs: event.ts,
+        steps: [],
+      };
+
+      const logEntry: LogEntry = {
+        seq: event.seq,
+        ts: event.ts,
+        kind: event.kind,
+        type: "sandbox",
+        text: `Sandbox started for ${event.dependency} ${event.from} -> ${event.to} (isolation: ${event.isolation})`,
+        sandboxInfo: { findingId: event.findingId },
+      };
+
+      return {
+        ...next,
+        sandbox: {
+          ...next.sandbox,
+          [event.findingId]: { ...run, isolation: event.isolation },
+        },
+        logs: appendLogEntry(next.logs, logEntry),
+      };
+    }
+
+    case "sandbox.step": {
+      const prev: SandboxRunBoardState = next.sandbox[event.findingId] ?? {
+        findingId: event.findingId,
+        dependency: event.findingId,
+        from: "",
+        to: "",
+        isolation: "none",
+        startedTs: event.ts,
+        steps: [],
+      };
+      const run: SandboxRunBoardState = {
+        ...prev,
+        steps: [
+          ...prev.steps,
+          { phase: event.phase, step: event.step, result: event.result, ts: event.ts },
+        ],
+      };
+
+      const logEntry: LogEntry = {
+        seq: event.seq,
+        ts: event.ts,
+        kind: event.kind,
+        type: "sandbox",
+        text: `Sandbox ${event.phase} ${event.step}: ${event.result.status}`,
+        sandboxInfo: { findingId: event.findingId, phase: event.phase, step: event.step },
+      };
+
+      return {
+        ...next,
+        sandbox: {
+          ...next.sandbox,
+          [event.findingId]: run,
+        },
+        logs: appendLogEntry(next.logs, logEntry),
+      };
+    }
+
+    case "sandbox.finished": {
+      const prev: SandboxRunBoardState = next.sandbox[event.findingId] ?? {
+        findingId: event.findingId,
+        dependency: event.findingId,
+        from: "",
+        to: "",
+        isolation: event.validation.isolation,
+        startedTs: event.ts,
+        steps: [],
+      };
+      const run: SandboxRunBoardState = {
+        ...prev,
+        isolation: event.validation.isolation,
+        validation: event.validation,
+        finishedTs: event.ts,
+      };
+
+      const logEntry: LogEntry = {
+        seq: event.seq,
+        ts: event.ts,
+        kind: event.kind,
+        type: "sandbox",
+        text: `Sandbox finished for ${event.findingId}: ${event.validation.verdict}`,
+        sandboxInfo: { findingId: event.findingId, verdict: event.validation.verdict },
+      };
+
+      return {
+        ...next,
+        sandbox: {
+          ...next.sandbox,
+          [event.findingId]: run,
+        },
+        logs: appendLogEntry(next.logs, logEntry),
+      };
+    }
+
+    case "remediation.proposed": {
+      const proposal: RemediationProposal = {
+        findingId: event.findingId,
+        action: event.action,
+        dependency: event.dependency,
+        from: event.from,
+        to: event.to,
+        approvalId: event.approvalId,
+        summary: event.summary,
+        ts: event.ts,
+      };
+
+      const logEntry: LogEntry = {
+        seq: event.seq,
+        ts: event.ts,
+        kind: event.kind,
+        type: "remediation",
+        text: `Remediation proposed for ${event.dependency}: ${event.action} (${event.summary})`,
+        remediationInfo: { findingId: event.findingId, action: event.action },
+      };
+
+      return {
+        ...next,
+        remediations: [...next.remediations, proposal],
         logs: appendLogEntry(next.logs, logEntry),
       };
     }
@@ -1138,10 +1416,10 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
         isTakeoverInProgress: false,
       };
 
-      // Mark all slots completed if run succeeded
+      // Mark seen slots completed if run succeeded; roles with no events stay untouched.
       const slots: Record<SlotRole, SlotLaneState> = { ...next.slots };
       if (event.status === "completed") {
-        for (const role of DEFAULT_SLOT_ROLES) {
+        for (const role of next.seenRoles) {
           if (slots[role] && slots[role].state !== "failed" && slots[role].state !== "exhausted") {
             slots[role] = { ...slots[role], state: "completed" };
           }

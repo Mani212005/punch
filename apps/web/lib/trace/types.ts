@@ -1,13 +1,20 @@
 import type {
   BlackboardEntry,
+  Claim,
+  ClaimActor,
+  ClaimStatus,
   Difficulty,
   ErrorClass,
+  EvidenceRecord,
   FailureReason,
   Finding,
   HandoffSummary,
   Plan,
   Provenance,
   Role,
+  SandboxStepName,
+  SandboxStepResult,
+  SandboxValidation,
   SelectionProvenance,
   SlotRole,
   SlotState,
@@ -110,6 +117,10 @@ export interface LogEntry {
     | "budget"
     | "replan"
     | "compensation"
+    | "claim"
+    | "evidence"
+    | "sandbox"
+    | "remediation"
     | "system";
   text?: string;
   toolCall?: { callId: string; tool: string; input: unknown };
@@ -147,6 +158,27 @@ export interface LogEntry {
     state: SlotState;
     detail?: string;
   };
+  claimInfo?: {
+    claimId: string;
+    status: Claim["status"];
+    verifier?: ClaimActor | null;
+    rationale?: string;
+  };
+  evidenceInfo?: {
+    evidenceId: string;
+    kind: EvidenceRecord["kind"];
+    ref: string;
+  };
+  sandboxInfo?: {
+    findingId: string;
+    phase?: "baseline" | "candidate";
+    step?: SandboxStepName;
+    verdict?: SandboxValidation["verdict"];
+  };
+  remediationInfo?: {
+    findingId: string;
+    action: "issue" | "pull_request";
+  };
 }
 
 export interface TakeoverBannerState {
@@ -183,6 +215,51 @@ export interface CriticVerdictItem {
   verdict: "accepted" | "rejected";
   attempt: number;
   findings: Finding[];
+  ts: number;
+}
+
+export interface ClaimLedgerItem {
+  claim: Claim;
+  recordedTs: number;
+  verifiedTs?: number;
+  verifiedRationale?: string;
+}
+
+export interface EvidenceLedgerItem {
+  evidence: EvidenceRecord;
+  role: SlotRole | "validator";
+  agentId?: string;
+  subtaskId?: string;
+  recordedTs: number;
+}
+
+export interface SandboxStepEntry {
+  phase: "baseline" | "candidate";
+  step: SandboxStepName;
+  result: SandboxStepResult;
+  ts: number;
+}
+
+export interface SandboxRunBoardState {
+  findingId: string;
+  dependency: string;
+  from: string;
+  to: string;
+  isolation: "docker" | "host" | "none";
+  startedTs: number;
+  steps: SandboxStepEntry[];
+  validation?: SandboxValidation;
+  finishedTs?: number;
+}
+
+export interface RemediationProposal {
+  findingId: string;
+  action: "issue" | "pull_request";
+  dependency: string;
+  from: string;
+  to: string | null;
+  approvalId?: string;
+  summary: string;
   ts: number;
 }
 
@@ -224,6 +301,12 @@ export interface BoardState {
   };
   approvals: ApprovalItem[];
   criticVerdicts: CriticVerdictItem[];
+  claims: Record<string, ClaimLedgerItem>;
+  evidence: Record<string, EvidenceLedgerItem>;
+  sandbox: Record<string, SandboxRunBoardState>;
+  remediations: RemediationProposal[];
+  /** Roles that have appeared in this trace (slot.assigned, agent.*, evidence). Only these render slot cards. */
+  seenRoles: SlotRole[];
   blackboard: Record<string, BlackboardEntry>;
   finalReport: {
     status: string;
@@ -251,6 +334,13 @@ export type {
   Subtask,
   Plan,
   BlackboardEntry,
+  Claim,
+  ClaimActor,
+  ClaimStatus,
+  EvidenceRecord,
+  SandboxStepName,
+  SandboxStepResult,
+  SandboxValidation,
   Finding,
   FailureReason,
   StandbyEntry,

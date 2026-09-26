@@ -11,6 +11,7 @@ interface ReplayPickerProps {
 }
 
 const COMMITTED_TRACES = [
+  { id: "investigation", name: "Investigation Run" },
   { id: "takeover", name: "Takeover Run" },
   { id: "clean", name: "Clean Run" },
 ];
