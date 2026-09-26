@@ -1,0 +1,22 @@
+[
+  {
+    "id": 101,
+    "tag_name": "6.13.0",
+    "name": "6.13.0",
+    "body": "Fix prototype pollution in parse. No breaking changes; drop-in upgrade from 6.x.",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-06-01T00:00:00Z",
+    "html_url": "https://github.com/ljharb/qs/releases/tag/6.13.0"
+  },
+  {
+    "id": 100,
+    "tag_name": "6.10.3",
+    "name": "6.10.3",
+    "body": "Security fix for CVE-2022-24999 (prototype pollution). No breaking changes.",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2023-10-01T00:00:00Z",
+    "html_url": "https://github.com/ljharb/qs/releases/tag/6.10.3"
+  }
+]

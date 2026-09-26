@@ -78,6 +78,11 @@ export interface RunFixture {
     };
     researcher: Record<string, FixtureScript>;
     executor: Record<string, FixtureScript>;
+    /** Investigation roles (E2); a missing map falls back to the researcher scripts. */
+    inventory?: Record<string, FixtureScript>;
+    reachability?: Record<string, FixtureScript>;
+    impact?: Record<string, FixtureScript>;
+    investigator?: Record<string, FixtureScript>;
   };
 }
 
@@ -283,8 +288,19 @@ class FixtureAdapter implements AgentAdapter {
           evidenceRecords: unknown[];
         }
       | undefined;
+    // Investigation roles read their own script maps; anything else keeps the old behavior.
+    const roleScripts: Record<string, Record<string, FixtureScript> | undefined> = {
+      researcher: this.fixture.agents.researcher,
+      executor: this.fixture.agents.executor,
+    };
+    for (const name of ["inventory", "reachability", "impact", "investigator"] as const) {
+      const scriptsForRole = this.fixture.agents[name];
+      if (scriptsForRole) roleScripts[name] = scriptsForRole;
+    }
     const scripts =
-      role === "researcher" ? this.fixture.agents.researcher : this.fixture.agents.executor;
+      role === "executor"
+        ? this.fixture.agents.executor
+        : (roleScripts[role ?? "researcher"] ?? this.fixture.agents.researcher);
     const script = scripts[subtaskId] ?? scripts["*"];
     if (!script) {
       yield {
@@ -297,7 +313,12 @@ class FixtureAdapter implements AgentAdapter {
 
     const outputs: unknown[] = [];
     const okCalls: boolean[] = [];
+    const fixtureDir = this.fixture.dir;
     const resolveInput = (value: unknown): unknown => {
+      // "$FIXTURE_DIR[/sub]" lets fixture scripts reference files next to run.json portably.
+      if (typeof value === "string" && value.startsWith("$FIXTURE_DIR")) {
+        return path.join(fixtureDir, value.slice("$FIXTURE_DIR".length));
+      }
       if (Array.isArray(value)) return value.map(resolveInput);
       if (value && typeof value === "object") {
         const ref = value as { $from?: number; path?: string };

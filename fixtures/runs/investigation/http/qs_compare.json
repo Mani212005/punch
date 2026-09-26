@@ -1,0 +1,11 @@
+{
+  "status": "ahead",
+  "ahead_by": 12,
+  "behind_by": 0,
+  "total_commits": 12,
+  "commits": [],
+  "files": [
+    { "filename": "lib/parse.js", "status": "modified", "additions": 8, "deletions": 4 },
+    { "filename": "test/parse.js", "status": "modified", "additions": 20, "deletions": 0 }
+  ]
+}

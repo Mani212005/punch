@@ -22,7 +22,11 @@
         "costTier": "high",
         "roles": [
           "planner",
+          "inventory",
           "researcher",
+          "reachability",
+          "impact",
+          "investigator",
           "executor",
           "critic"
         ],
@@ -40,7 +44,11 @@
         "costTier": "medium",
         "roles": [
           "planner",
+          "inventory",
           "researcher",
+          "reachability",
+          "impact",
+          "investigator",
           "executor",
           "critic"
         ],
@@ -138,6 +146,42 @@
           "probabilities": {
             "opus": 0.31,
             "sonnet": 0.69
+          }
+        },
+        "role_inventory": {
+          "type": "choice",
+          "choice": "sonnet",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.3,
+            "sonnet": 0.7
+          }
+        },
+        "role_reachability": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.7,
+            "sonnet": 0.3
+          }
+        },
+        "role_impact": {
+          "type": "choice",
+          "choice": "sonnet",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.3,
+            "sonnet": 0.7
+          }
+        },
+        "role_investigator": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.7,
+            "sonnet": 0.3
           }
         }
       }

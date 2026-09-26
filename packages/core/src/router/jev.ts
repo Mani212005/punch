@@ -159,7 +159,15 @@ export interface TaskRouting {
   model: string;
 }
 
-export type SubtaskAssignee = "researcher" | "executor" | "none_needed" | "human";
+export type SubtaskAssignee =
+  | "inventory"
+  | "researcher"
+  | "reachability"
+  | "impact"
+  | "investigator"
+  | "executor"
+  | "none_needed"
+  | "human";
 
 export interface SubtaskRouting {
   assignee: ChoiceJudgment & { choice: SubtaskAssignee };
@@ -199,7 +207,16 @@ export interface Jev {
 // Question construction
 // ---------------------------------------------------------------------------
 
-export const ROUTED_ROLES: readonly SlotRole[] = ["planner", "researcher", "executor", "critic"];
+export const ROUTED_ROLES: readonly SlotRole[] = [
+  "planner",
+  "inventory",
+  "researcher",
+  "reachability",
+  "impact",
+  "investigator",
+  "executor",
+  "critic",
+];
 
 const ROLE_DESCRIPTIONS: Record<SlotRole, string> = {
   planner: "Decomposes the brief into a subtask DAG with role hints.",
@@ -228,7 +245,12 @@ const COMPLEXITY_LEVELS = [
 ] as const;
 
 const ASSIGNEES: Record<SubtaskAssignee, string> = {
+  inventory: "Needs the repository's dependency list from manifests and lockfiles.",
   researcher: "Needs data gathered from external tools or APIs (GitHub, OSV, npm registry).",
+  reachability:
+    "Needs reachability analysis: imports, call sites of affected symbols, entrypoints and routes.",
+  impact: "Needs upgrade-impact analysis: release notes, changelogs, usage and test coverage.",
+  investigator: "Needs synthesis of evidence streams into findings with recommendations.",
   executor: "Needs writing or an action built from data already gathered, such as the report.",
   none_needed: "Already satisfied by existing inputs; no agent work required.",
   human: "Requires a person's judgment or authority that no agent should exercise.",

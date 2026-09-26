@@ -1,4 +1,5 @@
 import type { SlotRole } from "@punch/shared";
+import { SlotRole as SlotRoleSchema } from "@punch/shared";
 import { HttpError } from "./http.js";
 
 export type ToolChaosMode = "500" | "hang" | "truncate" | "empty";
@@ -27,7 +28,8 @@ export interface ChaosConfig {
   toolChaos: Map<string, ToolChaosMode>;
 }
 
-const VALID_SLOT_ROLES = new Set<SlotRole>(["planner", "researcher", "executor", "critic"]);
+/** Every slot role accepts chaos profiles (plan.md 2.6); derived from the schema so new roles work. */
+const VALID_SLOT_ROLES = new Set<SlotRole>(SlotRoleSchema.options);
 
 /**
  * Parses raw chaos profile strings (from CLI or config, e.g. ["provider-down:anthropic", "stall:researcher"])

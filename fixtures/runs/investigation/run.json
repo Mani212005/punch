@@ -1,0 +1,1154 @@
+{
+  "description": "E2 investigation run: qs is reachable on a route, unused-vuln-lib is never imported; the critic rejects once, a reachability replan follows, then accept.",
+  "task": {
+    "repoUrl": "https://github.com/example/vuln-shop",
+    "brief": "Investigate the dependencies of https://github.com/example/vuln-shop for known vulnerabilities: prove reachability, assess upgrade impact, validate the fix, and write a security investigation report."
+  },
+  "config": {
+    "version": 1,
+    "providers": [{ "id": "anthropic", "kind": "anthropic", "apiKeyEnv": "ANTHROPIC_API_KEY" }],
+    "agents": [
+      {
+        "id": "opus",
+        "displayName": "Claude Opus",
+        "providerId": "anthropic",
+        "model": "claude-opus-5",
+        "costTier": "high",
+        "roles": ["planner", "inventory", "researcher", "reachability", "impact", "investigator", "executor", "critic"],
+        "strengths": "Deep reasoning, careful long-form writing",
+        "pricing": { "inputUsdPerMTok": 15, "outputUsdPerMTok": 75 }
+      },
+      {
+        "id": "sonnet",
+        "displayName": "Claude Sonnet",
+        "providerId": "anthropic",
+        "model": "claude-sonnet-5",
+        "costTier": "medium",
+        "roles": ["planner", "inventory", "researcher", "reachability", "impact", "investigator", "executor", "critic"],
+        "strengths": "Balanced, reliable tool calling",
+        "pricing": { "inputUsdPerMTok": 3, "outputUsdPerMTok": 15 }
+      }
+    ],
+    "policy": {
+      "pins": [],
+      "fallbackChains": [],
+      "rules": [],
+      "preferences": "prefer careful evidence handling",
+      "distinctCritic": true,
+      "autoConfirmBelowConfidence": 0.6,
+      "maxReplacementsPerSlot": 2,
+      "stallAfterMs": { "api": 45000, "cli": 120000 }
+    },
+    "budgets": { "maxSteps": 120, "maxUsd": 20, "maxWallClockMs": 300000 },
+    "defaults": { "mode": "auto" }
+  },
+  "jev": {
+    "routeTask": {
+      "model": "jev-1.13.0",
+      "usage": { "input_tokens": 300, "output_tokens": 30 },
+      "answers": {
+        "difficulty": {
+          "type": "score",
+          "score": 1.2,
+          "legend": { "0": "simple", "1": "moderate", "2": "hard" },
+          "probabilities": { "0": 0.1, "1": 0.7, "2": 0.2 },
+          "confidence": 0.8
+        },
+        "needs_external_data": { "type": "noul", "noul": 0.9 },
+        "is_sensitive": { "type": "noul", "noul": 0.9 },
+        "role_planner": {
+          "type": "choice",
+          "choice": "opus",
+          "probabilities": { "opus": 0.8, "sonnet": 0.2 },
+          "confidence": 0.8
+        },
+        "role_inventory": {
+          "type": "choice",
+          "choice": "sonnet",
+          "probabilities": { "sonnet": 0.75, "opus": 0.25 },
+          "confidence": 0.75
+        },
+        "role_researcher": {
+          "type": "choice",
+          "choice": "sonnet",
+          "probabilities": { "sonnet": 0.83, "opus": 0.17 },
+          "confidence": 0.83
+        },
+        "role_reachability": {
+          "type": "choice",
+          "choice": "opus",
+          "probabilities": { "opus": 0.7, "sonnet": 0.3 },
+          "confidence": 0.7
+        },
+        "role_impact": {
+          "type": "choice",
+          "choice": "sonnet",
+          "probabilities": { "sonnet": 0.72, "opus": 0.28 },
+          "confidence": 0.72
+        },
+        "role_investigator": {
+          "type": "choice",
+          "choice": "opus",
+          "probabilities": { "opus": 0.78, "sonnet": 0.22 },
+          "confidence": 0.78
+        },
+        "role_executor": {
+          "type": "choice",
+          "choice": "opus",
+          "probabilities": { "opus": 0.7, "sonnet": 0.3 },
+          "confidence": 0.7
+        },
+        "role_critic": {
+          "type": "choice",
+          "choice": "sonnet",
+          "probabilities": { "sonnet": 0.8, "opus": 0.2 },
+          "confidence": 0.8
+        }
+      }
+    },
+    "routeSubtask": {
+      "List repository dependencies": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "inventory",
+            "confidence": 0.97,
+            "probabilities": {
+              "inventory": 0.97,
+              "researcher": 0.01,
+              "reachability": 0.005,
+              "impact": 0.005,
+              "investigator": 0.002,
+              "executor": 0.002,
+              "none_needed": 0.001,
+              "human": 0.005
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 0.7,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      },
+      "Research vulnerabilities": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "researcher",
+            "confidence": 0.97,
+            "probabilities": {
+              "inventory": 0.01,
+              "researcher": 0.97,
+              "reachability": 0.005,
+              "impact": 0.005,
+              "investigator": 0.002,
+              "executor": 0.002,
+              "none_needed": 0.001,
+              "human": 0.005
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 0.7,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      },
+      "Assess reachability": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "reachability",
+            "confidence": 0.96,
+            "probabilities": {
+              "inventory": 0.005,
+              "researcher": 0.01,
+              "reachability": 0.96,
+              "impact": 0.005,
+              "investigator": 0.01,
+              "executor": 0.002,
+              "none_needed": 0.003,
+              "human": 0.005
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.4,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      },
+      "Assess upgrade impact": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "impact",
+            "confidence": 0.96,
+            "probabilities": {
+              "inventory": 0.005,
+              "researcher": 0.01,
+              "reachability": 0.005,
+              "impact": 0.96,
+              "investigator": 0.01,
+              "executor": 0.002,
+              "none_needed": 0.003,
+              "human": 0.005
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.4,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      },
+      "Synthesize security findings": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "investigator",
+            "confidence": 0.95,
+            "probabilities": {
+              "inventory": 0.002,
+              "researcher": 0.01,
+              "reachability": 0.01,
+              "impact": 0.01,
+              "investigator": 0.95,
+              "executor": 0.008,
+              "none_needed": 0.005,
+              "human": 0.005
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.6,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.1, "1": 0.5, "2": 0.4 }
+          }
+        }
+      },
+      "Write investigation report": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "executor",
+            "confidence": 0.97,
+            "probabilities": {
+              "inventory": 0.002,
+              "researcher": 0.01,
+              "reachability": 0.002,
+              "impact": 0.002,
+              "investigator": 0.01,
+              "executor": 0.97,
+              "none_needed": 0.001,
+              "human": 0.003
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.0,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      },
+      "Reachability analysis": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "reachability",
+            "confidence": 0.96,
+            "probabilities": {
+              "inventory": 0.005,
+              "researcher": 0.01,
+              "reachability": 0.96,
+              "impact": 0.005,
+              "investigator": 0.01,
+              "executor": 0.002,
+              "none_needed": 0.003,
+              "human": 0.005
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.4,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      },
+      "Synthesize findings again": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "investigator",
+            "confidence": 0.95,
+            "probabilities": {
+              "inventory": 0.002,
+              "researcher": 0.01,
+              "reachability": 0.01,
+              "impact": 0.01,
+              "investigator": 0.95,
+              "executor": 0.008,
+              "none_needed": 0.005,
+              "human": 0.005
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.6,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.1, "1": 0.5, "2": 0.4 }
+          }
+        }
+      },
+      "Write investigation report again": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "executor",
+            "confidence": 0.97,
+            "probabilities": {
+              "inventory": 0.002,
+              "researcher": 0.01,
+              "reachability": 0.002,
+              "impact": 0.002,
+              "investigator": 0.01,
+              "executor": 0.97,
+              "none_needed": 0.001,
+              "human": 0.003
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.0,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      },
+      "default": {
+        "model": "jev-1.13.0",
+        "usage": { "input_tokens": 100, "output_tokens": 10 },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "researcher",
+            "confidence": 0.9,
+            "probabilities": {
+              "inventory": 0.02,
+              "researcher": 0.9,
+              "reachability": 0.02,
+              "impact": 0.02,
+              "investigator": 0.01,
+              "executor": 0.01,
+              "none_needed": 0.01,
+              "human": 0.01
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 0.7,
+            "confidence": 0.9,
+            "legend": { "0": "level 0", "1": "level 1", "2": "level 2" },
+            "probabilities": { "0": 0.2, "1": 0.6, "2": 0.2 }
+          }
+        }
+      }
+    },
+    "claimSupport": 0.95
+  },
+  "http": [
+    { "match": "/v1/querybatch", "file": "http/osv_batch.json" },
+    { "match": "registry.npmjs.org/qs", "file": "../../npm/qs_metadata.json" },
+    { "match": "registry.npmjs.org/unused-vuln-lib", "file": "http/unused_npm_metadata.json" },
+    { "match": "/releases", "file": "http/qs_releases.json" },
+    { "match": "/compare/", "file": "http/qs_compare.json" }
+  ],
+  "agents": {
+    "planner": {
+      "plan": {
+        "subtasks": [
+          {
+            "id": "s-inv",
+            "title": "List repository dependencies",
+            "description": "Fetch the vuln-shop source and list every dependency from package.json and lockfiles with resolved versions. Accept when the inventory names qs 6.5.2 and unused-vuln-lib 1.0.0 with evidence.",
+            "dependsOn": [],
+            "roleHint": "inventory",
+            "output": { "key": "inventory" },
+            "inputKeys": []
+          },
+          {
+            "id": "s-vuln",
+            "title": "Research vulnerabilities",
+            "description": "Query OSV and the npm registry for each inventoried dependency; record advisories, severity, affected symbols and patched versions from two independent sources. Accept when every dependency has a sourced verdict.",
+            "dependsOn": [],
+            "roleHint": "researcher",
+            "output": { "key": "vulns" },
+            "inputKeys": []
+          },
+          {
+            "id": "s-reach",
+            "title": "Assess reachability",
+            "description": "For each researched vulnerability, prove exists vs exposed vs exploitable from the import graph, call sites of affected symbols, entrypoints, routes and tests. Accept when every vulnerability has a REACHABLE / NOT_REACHABLE / UNKNOWN verdict backed by a completed search.",
+            "dependsOn": ["s-inv", "s-vuln"],
+            "roleHint": "reachability",
+            "output": { "key": "reachability" },
+            "inputKeys": ["inventory", "vulns"]
+          },
+          {
+            "id": "s-impact",
+            "title": "Assess upgrade impact",
+            "description": "For each candidate upgrade, compare versions, read release notes and changelogs, and check removed APIs against repository usage. Accept when every upgrade has a LOW / MEDIUM / HIGH level with risks and unknowns, never a percentage.",
+            "dependsOn": ["s-inv", "s-vuln"],
+            "roleHint": "impact",
+            "output": { "key": "upgrade_impact" },
+            "inputKeys": ["inventory", "vulns"]
+          },
+          {
+            "id": "s-invest",
+            "title": "Synthesize security findings",
+            "description": "Reconcile inventory, research, reachability and impact into one finding per vulnerability with a recommended action and candidate remediations for the sandbox. Accept when every finding follows the recommendation rules with blackboard-cited evidence.",
+            "dependsOn": ["s-reach", "s-impact"],
+            "roleHint": "investigator",
+            "output": { "key": "findings" },
+            "inputKeys": ["inventory", "vulns", "reachability", "upgrade_impact"]
+          },
+          {
+            "id": "s-valid",
+            "title": "Validate remediations in sandbox",
+            "description": "Code-driven: simulate each candidate remediation from the investigator in the isolated sandbox and record PASS / FAIL / NOT_RUN with test counts. No agent is routed to this subtask.",
+            "dependsOn": ["s-invest", "s-inv"],
+            "roleHint": "investigator",
+            "output": { "key": "validation_1" },
+            "inputKeys": ["findings", "inventory"],
+            "sandboxValidation": true
+          },
+          {
+            "id": "s-report",
+            "title": "Write investigation report",
+            "description": "Write the section-8 security investigation report: counts, per-finding reachability with evidence, upgrade and impact, sandbox validation, critic verdict and recommended action. Accept when every finding is covered and unknowns are listed, not hidden.",
+            "dependsOn": ["s-invest", "s-valid"],
+            "roleHint": "executor",
+            "output": { "key": "report" },
+            "inputKeys": ["findings", "validation_1"]
+          }
+        ]
+      },
+      "replan": {
+        "subtasks": [
+          {
+            "id": "s-reach2",
+            "title": "Reachability analysis",
+            "description": "Targeted replan after the critic rejected the reachability claim: perform call-site analysis for qs.parse and confirm the import-graph absence for unused-vuln-lib. Accept when both verdicts cite completed searches.",
+            "dependsOn": ["s-inv", "s-vuln"],
+            "roleHint": "reachability",
+            "output": { "key": "reachability_2" },
+            "inputKeys": ["inventory", "vulns"]
+          },
+          {
+            "id": "s-invest2",
+            "title": "Synthesize findings again",
+            "description": "Re-synthesize the findings on the redone reachability evidence with blackboard-cited claims. Accept when both findings follow the recommendation rules.",
+            "dependsOn": ["s-reach2", "s-impact"],
+            "roleHint": "investigator",
+            "output": { "key": "findings_2" },
+            "inputKeys": ["inventory", "vulns", "reachability_2", "upgrade_impact"]
+          },
+          {
+            "id": "s-valid2",
+            "title": "Validate remediations in sandbox again",
+            "description": "Code-driven: simulate each candidate remediation in the isolated sandbox. No agent is routed to this subtask.",
+            "dependsOn": ["s-invest2", "s-inv"],
+            "roleHint": "investigator",
+            "output": { "key": "validation_2" },
+            "inputKeys": ["findings_2", "inventory"],
+            "sandboxValidation": true
+          },
+          {
+            "id": "s-report2",
+            "title": "Write investigation report again",
+            "description": "Write the section-8 report on the re-investigated findings. Accept when every finding is covered and unknowns are listed.",
+            "dependsOn": ["s-invest2", "s-valid2"],
+            "roleHint": "executor",
+            "output": { "key": "report" },
+            "inputKeys": ["findings_2", "validation_2"]
+          }
+        ]
+      }
+    },
+    "critic": {
+      "reject": {
+        "s-invest": [
+          {
+            "claim": "qs.parse is reachable from the /search route",
+            "problem": "Reachability claim was unsupported: no call-site analysis was performed.",
+            "severity": "blocker",
+            "requestedTask": {
+              "title": "Reachability analysis",
+              "description": "Perform call-site analysis for qs.parse and confirm the import-graph absence for unused-vuln-lib",
+              "roleHint": "reachability"
+            }
+          }
+        ]
+      }
+    },
+    "inventory": {
+      "s-inv": {
+        "calls": [
+          {
+            "tool": "parse_dependency_inventory",
+            "input": {
+              "packageJson": "{\n  \"name\": \"vuln-shop\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Fixture shop app: qs is used on a reachable route, unused-vuln-lib is never imported\",\n  \"main\": \"src/server.js\",\n  \"scripts\": { \"start\": \"node src/server.js\", \"test\": \"node --test test/\" },\n  \"dependencies\": { \"qs\": \"6.5.2\", \"unused-vuln-lib\": \"1.0.0\" }\n}"
+            },
+            "require": "direct"
+          }
+        ],
+        "result": {
+          "value": {
+            "repository": "vuln-shop",
+            "inventory": {
+              "direct": [
+                { "name": "qs", "specifier": "6.5.2", "isDev": false, "type": "prod" },
+                { "name": "unused-vuln-lib", "specifier": "1.0.0", "isDev": false, "type": "prod" }
+              ],
+              "allResolved": { "qs": "6.5.2", "unused-vuln-lib": "1.0.0" },
+              "manifestFound": true,
+              "lockfileType": "none"
+            },
+            "dependencyEdges": []
+          },
+          "evidence": [
+            {
+              "claim": "vuln-shop declares qs 6.5.2 and unused-vuln-lib 1.0.0 as production dependencies",
+              "source": "parse_dependency_inventory",
+              "toolCallId": "$1",
+              "quote": "direct: qs@6.5.2, unused-vuln-lib@1.0.0"
+            },
+            {
+              "claim": "no lockfile is present, so exact resolved versions come from the manifest specifiers",
+              "source": "parse_dependency_inventory",
+              "toolCallId": "$1",
+              "quote": "lockfileType: none"
+            }
+          ]
+        },
+        "degraded": {
+          "value": {
+            "repository": "vuln-shop",
+            "inventory": {
+              "direct": [],
+              "allResolved": {},
+              "manifestFound": false,
+              "lockfileType": "none"
+            },
+            "dependencyEdges": []
+          },
+          "evidence": [],
+          "degradedReason": "manifest could not be read"
+        }
+      }
+    },
+    "researcher": {
+      "s-vuln": {
+        "calls": [
+          {
+            "tool": "osv_query_batch",
+            "input": {
+              "queries": [
+                { "package": { "name": "qs", "ecosystem": "npm" }, "version": "6.5.2" },
+                { "package": { "name": "unused-vuln-lib", "ecosystem": "npm" }, "version": "1.0.0" }
+              ]
+            },
+            "require": "results"
+          },
+          { "tool": "get_package_metadata", "input": { "package": "qs" }, "require": "metadata.dist-tags" },
+          {
+            "tool": "get_package_metadata",
+            "input": { "package": "unused-vuln-lib" },
+            "require": "metadata.dist-tags"
+          }
+        ],
+        "result": {
+          "value": {
+            "vulnerabilities": [
+              {
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "severity": "HIGH",
+                "affectedSymbols": ["parse"],
+                "patchedVersion": "6.13.0",
+                "sources": ["osv", "npm"]
+              },
+              {
+                "dependency": "unused-vuln-lib",
+                "version": "1.0.0",
+                "advisoryIds": ["CVE-2024-0001"],
+                "severity": "LOW",
+                "affectedSymbols": ["compile"],
+                "patchedVersion": "1.2.0",
+                "sources": ["osv", "npm"]
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "claim": "qs 6.5.2 is affected by CVE-2022-24999, fixed in 6.10.3",
+              "source": "osv_query_batch",
+              "toolCallId": "$1",
+              "quote": "GHSA-hrpp-h998-j3pp aliases CVE-2022-24999, fixed 6.10.3"
+            },
+            {
+              "claim": "unused-vuln-lib 1.0.0 is affected by CVE-2024-0001, fixed in 1.2.0",
+              "source": "osv_query_batch",
+              "toolCallId": "$1",
+              "quote": "GHSA-xxxx-yyyy-zzzz aliases CVE-2024-0001, fixed 1.2.0"
+            },
+            {
+              "claim": "qs latest published version is 6.13.0",
+              "source": "npm registry",
+              "toolCallId": "$2",
+              "quote": "dist-tags.latest = 6.13.0"
+            },
+            {
+              "claim": "unused-vuln-lib latest published version is 1.2.0",
+              "source": "npm registry",
+              "toolCallId": "$3",
+              "quote": "dist-tags.latest = 1.2.0"
+            }
+          ]
+        },
+        "degraded": {
+          "value": { "vulnerabilities": [] },
+          "evidence": [],
+          "degradedReason": "advisory sources unavailable"
+        }
+      }
+    },
+    "reachability": {
+      "s-reach": {
+        "calls": [
+          {
+            "tool": "analyze_import_graph",
+            "input": { "workdir": "$FIXTURE_DIR/repo", "targetPackages": ["qs", "unused-vuln-lib"] }
+          },
+          {
+            "tool": "find_call_sites",
+            "input": { "workdir": "$FIXTURE_DIR/repo", "package": "qs", "symbols": ["parse"] }
+          },
+          { "tool": "find_entrypoints_and_routes", "input": { "workdir": "$FIXTURE_DIR/repo" } },
+          { "tool": "map_tests_for_module", "input": { "workdir": "$FIXTURE_DIR/repo", "targetPackage": "qs" } }
+        ],
+        "result": {
+          "value": {
+            "assessments": [
+              {
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "reachability": {
+                  "verdict": "REACHABLE",
+                  "exists": "yes",
+                  "exposed": "yes",
+                  "exploitable": "yes",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": ["reach-qs-import", "reach-qs-callsite", "reach-qs-route"],
+                  "summary": "qs.parse is imported in src/server.js, called with request input on the /search route, and covered by tests."
+                }
+              },
+              {
+                "dependency": "unused-vuln-lib",
+                "version": "1.0.0",
+                "advisoryIds": ["CVE-2024-0001"],
+                "reachability": {
+                  "verdict": "NOT_REACHABLE",
+                  "exists": "yes",
+                  "exposed": "no",
+                  "exploitable": "no",
+                  "affectedSymbols": ["compile"],
+                  "claimIds": ["reach-unused-absence"],
+                  "summary": "unused-vuln-lib is declared but never imported: the completed import-graph search found no import and no call site."
+                }
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "claim": "qs is imported in src/server.js",
+              "source": "analyze_import_graph",
+              "toolCallId": "$1",
+              "quote": "src/server.js imports qs"
+            },
+            {
+              "claim": "unused-vuln-lib has no imports anywhere in the repository",
+              "source": "analyze_import_graph",
+              "toolCallId": "$1",
+              "quote": "no imports of unused-vuln-lib found"
+            },
+            {
+              "claim": "qs.parse is called in src/server.js with request input",
+              "source": "find_call_sites",
+              "toolCallId": "$2",
+              "quote": "src/server.js: qs.parse(raw)"
+            },
+            {
+              "claim": "the /search route exposes the qs.parse call to external requests",
+              "source": "find_entrypoints_and_routes",
+              "toolCallId": "$3",
+              "quote": "GET /search in src/server.js"
+            },
+            {
+              "claim": "test/server.test.js covers the module using qs",
+              "source": "map_tests_for_module",
+              "toolCallId": "$4",
+              "quote": "test/server.test.js -> src/server.js"
+            }
+          ]
+        },
+        "degraded": {
+          "value": {
+            "assessments": [
+              {
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "reachability": {
+                  "verdict": "UNKNOWN",
+                  "exists": "yes",
+                  "exposed": "unknown",
+                  "exploitable": "unknown",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": [],
+                  "summary": "Static analysis could not run; reachability is unknown, never assumed absent."
+                }
+              }
+            ]
+          },
+          "evidence": [],
+          "degradedReason": "static analysis tools unavailable"
+        }
+      },
+      "s-reach2": {
+        "calls": [
+          {
+            "tool": "analyze_import_graph",
+            "input": { "workdir": "$FIXTURE_DIR/repo", "targetPackages": ["qs", "unused-vuln-lib"] }
+          },
+          {
+            "tool": "find_call_sites",
+            "input": { "workdir": "$FIXTURE_DIR/repo", "package": "qs", "symbols": ["parse"] }
+          },
+          { "tool": "find_entrypoints_and_routes", "input": { "workdir": "$FIXTURE_DIR/repo" } }
+        ],
+        "result": {
+          "value": {
+            "assessments": [
+              {
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "reachability": {
+                  "verdict": "REACHABLE",
+                  "exists": "yes",
+                  "exposed": "yes",
+                  "exploitable": "yes",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": ["reach-qs-import", "reach-qs-callsite", "reach-qs-route"],
+                  "summary": "Redone analysis: qs.parse is imported in src/server.js, called with request input on the /search route."
+                }
+              },
+              {
+                "dependency": "unused-vuln-lib",
+                "version": "1.0.0",
+                "advisoryIds": ["CVE-2024-0001"],
+                "reachability": {
+                  "verdict": "NOT_REACHABLE",
+                  "exists": "yes",
+                  "exposed": "no",
+                  "exploitable": "no",
+                  "affectedSymbols": ["compile"],
+                  "claimIds": ["reach-unused-absence"],
+                  "summary": "Redone analysis: unused-vuln-lib is declared but never imported."
+                }
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "claim": "qs is imported in src/server.js",
+              "source": "analyze_import_graph",
+              "toolCallId": "$1",
+              "quote": "src/server.js imports qs"
+            },
+            {
+              "claim": "unused-vuln-lib has no imports anywhere in the repository",
+              "source": "analyze_import_graph",
+              "toolCallId": "$1",
+              "quote": "no imports of unused-vuln-lib found"
+            },
+            {
+              "claim": "qs.parse is called in src/server.js with request input",
+              "source": "find_call_sites",
+              "toolCallId": "$2",
+              "quote": "src/server.js: qs.parse(raw)"
+            },
+            {
+              "claim": "the /search route exposes the qs.parse call to external requests",
+              "source": "find_entrypoints_and_routes",
+              "toolCallId": "$3",
+              "quote": "GET /search in src/server.js"
+            }
+          ]
+        },
+        "degraded": {
+          "value": { "assessments": [] },
+          "evidence": [],
+          "degradedReason": "static analysis tools unavailable"
+        }
+      }
+    },
+    "impact": {
+      "s-impact": {
+        "calls": [
+          { "tool": "get_release_notes", "input": { "owner": "ljharb", "repo": "qs" } },
+          {
+            "tool": "github_compare_commits",
+            "input": { "owner": "ljharb", "repo": "qs", "base": "6.5.2", "head": "6.13.0" }
+          },
+          { "tool": "get_package_metadata", "input": { "package": "unused-vuln-lib" } }
+        ],
+        "result": {
+          "value": {
+            "impacts": [
+              {
+                "dependency": "qs",
+                "from": "6.5.2",
+                "to": "6.13.0",
+                "semverChange": "minor",
+                "releaseNotes": "Fix prototype pollution in parse. No breaking changes; drop-in upgrade from 6.x.",
+                "removedApisInUse": [],
+                "impact": {
+                  "level": "LOW",
+                  "detectedRisks": [],
+                  "unknowns": ["no lockfile present, so transitive changes were not enumerated"],
+                  "claimIds": ["impact-qs-notes"]
+                }
+              },
+              {
+                "dependency": "unused-vuln-lib",
+                "from": "1.0.0",
+                "to": "1.2.0",
+                "semverChange": "minor",
+                "releaseNotes": null,
+                "removedApisInUse": [],
+                "impact": {
+                  "level": "LOW",
+                  "detectedRisks": [],
+                  "unknowns": ["no changelog published for 1.2.0; package is never imported so blast radius is nil"],
+                  "claimIds": ["impact-unused-notes"]
+                }
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "claim": "qs 6.13.0 release notes report a security fix with no breaking changes",
+              "source": "get_release_notes",
+              "toolCallId": "$1",
+              "quote": "Fix prototype pollution in parse. No breaking changes"
+            },
+            {
+              "claim": "qs 6.5.2 to 6.13.0 touches only lib/parse.js and its tests",
+              "source": "github_compare_commits",
+              "toolCallId": "$2",
+              "quote": "files: lib/parse.js, test/parse.js"
+            },
+            {
+              "claim": "unused-vuln-lib latest published version is 1.2.0",
+              "source": "npm registry",
+              "toolCallId": "$3",
+              "quote": "dist-tags.latest = 1.2.0"
+            }
+          ]
+        },
+        "degraded": {
+          "value": { "impacts": [] },
+          "evidence": [],
+          "degradedReason": "release data unavailable"
+        }
+      }
+    },
+    "investigator": {
+      "s-invest": {
+        "calls": [
+          { "tool": "read_blackboard", "input": { "key": "inventory" } },
+          { "tool": "read_blackboard", "input": { "key": "vulns" } },
+          { "tool": "read_blackboard", "input": { "key": "reachability" } },
+          { "tool": "read_blackboard", "input": { "key": "upgrade_impact" } }
+        ],
+        "result": {
+          "value": {
+            "findings": [
+              {
+                "id": "f-qs",
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "severity": "HIGH",
+                "reachability": {
+                  "verdict": "REACHABLE",
+                  "exists": "yes",
+                  "exposed": "yes",
+                  "exploitable": "yes",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": ["reach-qs-import", "reach-qs-callsite", "reach-qs-route"],
+                  "summary": "qs.parse is imported in src/server.js, called with request input on the /search route."
+                },
+                "upgrade": { "from": "6.5.2", "to": "6.13.0" },
+                "upgradeImpact": {
+                  "level": "LOW",
+                  "detectedRisks": [],
+                  "unknowns": ["no lockfile present, so transitive changes were not enumerated"],
+                  "claimIds": ["impact-qs-notes"]
+                },
+                "sandbox": null,
+                "critic": "PENDING",
+                "recommendedAction": "HUMAN_REVIEW",
+                "reasoning": "Reachable HIGH vulnerability with a LOW-impact upgrade, but no sandbox validation ran yet, so a human must review before remediation.",
+                "claimIds": ["f-qs-reach", "f-qs-impact"]
+              },
+              {
+                "id": "f-unused",
+                "dependency": "unused-vuln-lib",
+                "version": "1.0.0",
+                "advisoryIds": ["CVE-2024-0001"],
+                "severity": "LOW",
+                "reachability": {
+                  "verdict": "NOT_REACHABLE",
+                  "exists": "yes",
+                  "exposed": "no",
+                  "exploitable": "no",
+                  "affectedSymbols": ["compile"],
+                  "claimIds": ["reach-unused-absence"],
+                  "summary": "unused-vuln-lib is declared but never imported."
+                },
+                "upgrade": { "from": "1.0.0", "to": "1.2.0" },
+                "upgradeImpact": {
+                  "level": "LOW",
+                  "detectedRisks": [],
+                  "unknowns": ["no changelog published for 1.2.0"],
+                  "claimIds": ["impact-unused-notes"]
+                },
+                "sandbox": null,
+                "critic": "PENDING",
+                "recommendedAction": "MONITOR",
+                "reasoning": "LOW severity and proven not reachable; monitor for future use, no upgrade needed now.",
+                "claimIds": ["f-unused-reach"]
+              }
+            ],
+            "remediations": [{ "findingId": "f-qs", "dependency": "qs", "from": "6.5.2", "to": "6.13.0" }]
+          },
+          "evidence": [
+            {
+              "claim": "qs is a declared production dependency at 6.5.2",
+              "source": "blackboard:inventory"
+            },
+            {
+              "claim": "qs 6.5.2 is affected by CVE-2022-24999 with patch 6.13.0",
+              "source": "blackboard:vulns"
+            },
+            {
+              "claim": "qs.parse is reachable from the /search route",
+              "source": "blackboard:reachability"
+            },
+            {
+              "claim": "the qs upgrade has LOW impact with no removed APIs in use",
+              "source": "blackboard:upgrade_impact"
+            }
+          ]
+        },
+        "degraded": {
+          "value": { "findings": [], "remediations": [] },
+          "evidence": [],
+          "degradedReason": "evidence streams unavailable"
+        }
+      },
+      "s-invest2": {
+        "calls": [
+          { "tool": "read_blackboard", "input": { "key": "inventory" } },
+          { "tool": "read_blackboard", "input": { "key": "vulns" } },
+          { "tool": "read_blackboard", "input": { "key": "reachability_2" } },
+          { "tool": "read_blackboard", "input": { "key": "upgrade_impact" } }
+        ],
+        "result": {
+          "value": {
+            "findings": [
+              {
+                "id": "f-qs",
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "severity": "HIGH",
+                "reachability": {
+                  "verdict": "REACHABLE",
+                  "exists": "yes",
+                  "exposed": "yes",
+                  "exploitable": "yes",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": ["reach-qs-import", "reach-qs-callsite", "reach-qs-route"],
+                  "summary": "Redone analysis confirms qs.parse is imported in src/server.js and called with request input on the /search route."
+                },
+                "upgrade": { "from": "6.5.2", "to": "6.13.0" },
+                "upgradeImpact": {
+                  "level": "LOW",
+                  "detectedRisks": [],
+                  "unknowns": ["no lockfile present, so transitive changes were not enumerated"],
+                  "claimIds": ["impact-qs-notes"]
+                },
+                "sandbox": null,
+                "critic": "PENDING",
+                "recommendedAction": "HUMAN_REVIEW",
+                "reasoning": "Redone reachability confirms REACHABLE; still no sandbox validation, so human review before remediation.",
+                "claimIds": ["f-qs-reach", "f-qs-impact"]
+              },
+              {
+                "id": "f-unused",
+                "dependency": "unused-vuln-lib",
+                "version": "1.0.0",
+                "advisoryIds": ["CVE-2024-0001"],
+                "severity": "LOW",
+                "reachability": {
+                  "verdict": "NOT_REACHABLE",
+                  "exists": "yes",
+                  "exposed": "no",
+                  "exploitable": "no",
+                  "affectedSymbols": ["compile"],
+                  "claimIds": ["reach-unused-absence"],
+                  "summary": "Redone analysis confirms unused-vuln-lib is declared but never imported."
+                },
+                "upgrade": { "from": "1.0.0", "to": "1.2.0" },
+                "upgradeImpact": {
+                  "level": "LOW",
+                  "detectedRisks": [],
+                  "unknowns": ["no changelog published for 1.2.0"],
+                  "claimIds": ["impact-unused-notes"]
+                },
+                "sandbox": null,
+                "critic": "PENDING",
+                "recommendedAction": "MONITOR",
+                "reasoning": "LOW severity and proven not reachable; monitor for future use.",
+                "claimIds": ["f-unused-reach"]
+              }
+            ],
+            "remediations": [{ "findingId": "f-qs", "dependency": "qs", "from": "6.5.2", "to": "6.13.0" }]
+          },
+          "evidence": [
+            {
+              "claim": "qs is a declared production dependency at 6.5.2",
+              "source": "blackboard:inventory"
+            },
+            {
+              "claim": "qs 6.5.2 is affected by CVE-2022-24999 with patch 6.13.0",
+              "source": "blackboard:vulns"
+            },
+            {
+              "claim": "redone analysis proves qs.parse is reachable from the /search route",
+              "source": "blackboard:reachability_2"
+            },
+            {
+              "claim": "the qs upgrade has LOW impact with no removed APIs in use",
+              "source": "blackboard:upgrade_impact"
+            }
+          ]
+        },
+        "degraded": {
+          "value": { "findings": [], "remediations": [] },
+          "evidence": [],
+          "degradedReason": "evidence streams unavailable"
+        }
+      }
+    },
+    "executor": {
+      "s-report2": {
+        "calls": [
+          { "tool": "read_blackboard", "input": { "key": "findings_2" } },
+          { "tool": "read_blackboard", "input": { "key": "validation_2" } }
+        ],
+        "result": {
+          "value": {
+            "summary": "Investigated 2 vulnerabilities in vuln-shop: 1 reachable (qs CVE-2022-24999, human review before upgrade to 6.13.0), 1 not reachable (unused-vuln-lib CVE-2024-0001, monitor). Sandbox validation did not run: no isolation available.",
+            "items": [
+              {
+                "package": "qs",
+                "currentVersion": "6.5.2",
+                "advisories": ["CVE-2022-24999"],
+                "fixedVersion": "6.13.0",
+                "breakingChangeRisk": "low",
+                "recommendedAction": "HUMAN_REVIEW: reachable HIGH, LOW-impact upgrade, sandbox NOT_RUN",
+                "priority": 1
+              },
+              {
+                "package": "unused-vuln-lib",
+                "currentVersion": "1.0.0",
+                "advisories": ["CVE-2024-0001"],
+                "fixedVersion": "1.2.0",
+                "breakingChangeRisk": "low",
+                "recommendedAction": "MONITOR: LOW severity, proven not reachable",
+                "priority": 2
+              }
+            ],
+            "unknowns": ["sandbox validation did not run (no isolation available): qs upgrade needs human review"]
+          },
+          "evidence": [
+            {
+              "claim": "one finding is REACHABLE and one is NOT_REACHABLE",
+              "source": "blackboard:findings_2"
+            },
+            {
+              "claim": "sandbox validation recorded NOT_RUN",
+              "source": "blackboard:validation_2"
+            }
+          ]
+        },
+        "degraded": {
+          "value": { "summary": "report incomplete", "items": [], "unknowns": ["findings unavailable"] },
+          "evidence": [],
+          "degradedReason": "findings unavailable"
+        }
+      }
+    }
+  }
+}
