@@ -19,3 +19,5 @@ export * from "./tools/npm.js";
 export * from "./tools/gh-advisory.js";
 export * from "./tools/inventory.js";
 export * from "./tools/registry.js";
+export * from "./adapters/agent.js";
+export * from "./adapters/anthropic.js";
