@@ -30,7 +30,6 @@ interface TimelineTileProps {
 const PLOT_X = 90;
 const PLOT_W = 900;
 const VIEW_W = 1000;
-const ROW_H = 30;
 const TOP_PAD = 14;
 const AXIS_PAD = 34;
 
@@ -62,24 +61,32 @@ export default function TimelineTile({
 }: TimelineTileProps) {
   const currentEventNum = totalEvents > 0 ? Math.max(0, currentIndex + 1) : 0;
 
-  // Rows: preferred role order first, then any other roles seen in spans or slots.
-  const rowRoles: string[] = [];
-  PREFERRED_ROW_ORDER.forEach((r) => {
-    if (spans.some((s) => s.role === r) || slots[r]) rowRoles.push(r);
-  });
-  const seen = new Set(rowRoles);
-  spans.forEach((s) => {
-    if (!seen.has(s.role)) {
-      seen.add(s.role);
-      rowRoles.push(s.role);
-    }
-  });
-  Object.keys(slots).forEach((r) => {
-    if (!seen.has(r)) {
-      seen.add(r);
-      rowRoles.push(r);
-    }
-  });
+  // Rows: roles that actually have timeline spans (preferred order first).
+  // Roles with no spans yet stay off the chart instead of showing fake bars.
+  // When nothing has started (live run, event -1) fall back to slot roles.
+  const spanRoles: string[] = [];
+  {
+    const seen = new Set<string>();
+    PREFERRED_ROW_ORDER.forEach((r) => {
+      if (spans.some((s) => s.role === r)) {
+        seen.add(r);
+        spanRoles.push(r);
+      }
+    });
+    spans.forEach((s) => {
+      if (!seen.has(s.role)) {
+        seen.add(s.role);
+        spanRoles.push(s.role);
+      }
+    });
+  }
+  const rowRoles =
+    spanRoles.length > 0
+      ? spanRoles
+      : [
+          ...PREFERRED_ROW_ORDER.filter((r) => slots[r]),
+          ...Object.keys(slots).filter((r) => !PREFERRED_ROW_ORDER.includes(r)),
+        ];
 
   // Time domain: full run so the frame is stable while scrubbing.
   const spanTimes = spans.flatMap((s) => [s.startTs, s.endTs ?? s.startTs]);
@@ -95,18 +102,6 @@ export default function TimelineTile({
   const safeT1 = Number.isFinite(domainEnd) && domainEnd > safeT0 ? domainEnd : safeT0 + 1000;
   const x = (ts: number) => PLOT_X + (Math.max(0, ts - safeT0) / (safeT1 - safeT0)) * PLOT_W;
 
-  const viewH = TOP_PAD + rowRoles.length * ROW_H + AXIS_PAD;
-  const axisY = TOP_PAD + rowRoles.length * ROW_H;
-
-  // Now cursor: event timestamp when known, otherwise index ratio.
-  const nowX =
-    nowTs !== undefined && Number.isFinite(nowTs)
-      ? x(nowTs)
-      : PLOT_X +
-        (totalEvents > 1 ? Math.min(1, Math.max(0, currentIndex / (totalEvents - 1))) : 1) * PLOT_W;
-  const nowElapsed = nowTs !== undefined ? Math.max(0, nowTs - safeT0) : 0;
-  const nowTimeStr = formatTime(nowElapsed);
-
   // Kill / takeover markers share the slot.failed timestamp with the banner.
   const killMarker = markers.find((m) => m.type === "kill");
   const takeoverMarker = markers.find((m) => m.type === "takeover");
@@ -117,7 +112,85 @@ export default function TimelineTile({
     (killMarker && takeoverMarker ? Math.max(0, takeoverMarker.ts - killMarker.ts) : 0);
   const gapSec = (gapMs / 1000).toFixed(1);
 
+  // Per-role agent lanes: sequential spans of one role are chained end-to-start
+  // (the reducer only stamps starts; run.finished closes everything), and the
+  // failed predecessor is clipped + failed at the kill timestamp it shares
+  // with the banner. Each agent gets its own sub-lane so a takeover reads as
+  // two stacked bars instead of one overlapping smear.
+  interface LaneSpan extends TimelineSpan {
+    renderEnd: number;
+    renderFailed: boolean;
+  }
+  interface RoleRow {
+    role: string;
+    lanes: { agentId: string; spans: LaneSpan[]; tools: TimelineSpan[] }[];
+  }
+  const LANE_H = 18;
+  const ROW_PAD = 12;
+  const rows: RoleRow[] = rowRoles.map((role) => {
+    const agentSpans = spans
+      .filter((s) => s.role === role && s.type === "agent")
+      .sort((a, b) => a.startTs - b.startTs);
+    const lanes: RoleRow["lanes"] = [];
+    agentSpans.forEach((span, idx) => {
+      const nextStart = agentSpans[idx + 1]?.startTs;
+      let renderEnd = Math.min(span.endTs ?? safeT1, nextStart ?? safeT1);
+      if (renderEnd < span.startTs) renderEnd = span.startTs;
+      let renderFailed = span.status === "failed";
+      if (
+        takeover &&
+        killMarker &&
+        span.role === takeover.role &&
+        span.agentId === takeover.failedAgentId &&
+        span.startTs <= killMarker.ts &&
+        killMarker.ts <= renderEnd
+      ) {
+        renderEnd = killMarker.ts;
+        renderFailed = true;
+      }
+      let lane = lanes.find((l) => l.agentId === span.agentId);
+      if (!lane) {
+        lane = { agentId: span.agentId, spans: [], tools: [] };
+        lanes.push(lane);
+      }
+      lane.spans.push({ ...span, renderEnd, renderFailed });
+    });
+    spans
+      .filter((s) => s.role === role && s.type === "tool")
+      .forEach((tool) => {
+        let lane = lanes.find((l) => l.agentId === tool.agentId);
+        if (!lane) {
+          lane = { agentId: tool.agentId, spans: [], tools: [] };
+          lanes.push(lane);
+        }
+        lane.tools.push(tool);
+      });
+    return { role, lanes };
+  });
+  const rowHeights = rows.map((r) => ROW_PAD + Math.max(1, r.lanes.length) * LANE_H);
+  const rowY: number[] = [];
+  rows.reduce((y, _, i) => {
+    rowY.push(y);
+    return y + rowHeights[i];
+  }, TOP_PAD);
+  const plotH = rowHeights.reduce((a, b) => a + b, 0);
+  const viewH = TOP_PAD + plotH + AXIS_PAD;
+  const axisY = TOP_PAD + plotH;
+
   const capStr = formatTime(budgetMsMax ?? safeT1 - safeT0);
+
+  // Now cursor: event timestamp when known, otherwise index ratio.
+  const nowX =
+    nowTs !== undefined && Number.isFinite(nowTs)
+      ? x(nowTs)
+      : PLOT_X +
+        (totalEvents > 1 ? Math.min(1, Math.max(0, currentIndex / (totalEvents - 1))) : 1) * PLOT_W;
+  const nowElapsed = nowTs !== undefined ? Math.max(0, nowTs - safeT0) : 0;
+  const nowTimeStr = formatTime(nowElapsed);
+  const nowAnchor = nowX > PLOT_X + PLOT_W - 70 ? "end" : "middle";
+  // The cursor line always renders; its text label hides when it would
+  // collide with the cap label (replay at the final event).
+  const showNowLabel = PLOT_X + PLOT_W - nowX > 60;
 
   return (
     <div className="bz-tile c12">
@@ -203,52 +276,52 @@ export default function TimelineTile({
           aria-label={`Timeline with the kill at ${killTimeStr} and the takeover ${gapSec} seconds later`}
           style={{ minWidth: "680px", width: "100%", height: "auto", display: "block" }}
         >
-          {rowRoles.map((role, rowIdx) => {
-            const rowY = TOP_PAD + rowIdx * ROW_H;
-            const agentSpans = spans.filter((s) => s.role === role && s.type === "agent");
-            const toolSpans = spans.filter((s) => s.role === role && s.type === "tool");
+          {rows.map((row, rowIdx) => {
+            const baseY = rowY[rowIdx];
             return (
-              <g key={`row-${role}`}>
-                <text x="6" y={rowY + 16} fontSize="10">
-                  {role}
+              <g key={`row-${row.role}`}>
+                <text x="6" y={baseY + 12} fontSize="10">
+                  {row.role}
                 </text>
-                {agentSpans.map((span) => {
-                  const barX = x(span.startTs);
-                  const barEnd = x(span.endTs ?? nowTs ?? span.startTs);
-                  const barW = Math.max(3, barEnd - barX);
-                  const label =
-                    span.label || `${span.agentId}${span.subtaskId ? ` · ${span.subtaskId}` : ""}`;
+                {row.lanes.map((lane, laneIdx) => {
+                  const laneY = baseY + laneIdx * LANE_H;
                   return (
-                    <g key={span.id}>
-                      <rect
-                        x={barX}
-                        y={rowY}
-                        width={barW}
-                        height="14"
-                        fill={spanFill(span.status)}
-                      />
-                      {barW > 64 && (
-                        <text x={barX + 6} y={rowY + 11} fontSize="9" className="inv">
-                          {label}
-                        </text>
-                      )}
+                    <g key={`lane-${row.role}-${lane.agentId}`}>
+                      {lane.spans.map((span) => {
+                        const barX = x(span.startTs);
+                        const barW = Math.max(3, x(span.renderEnd) - barX);
+                        const label =
+                          span.label ||
+                          `${span.agentId}${span.subtaskId ? ` · ${span.subtaskId}` : ""}`;
+                        const fill = span.renderFailed ? "#E4321B" : spanFill(span.status);
+                        return (
+                          <g key={span.id}>
+                            <rect x={barX} y={laneY} width={barW} height="13" fill={fill} />
+                            {barW > 64 && (
+                              <text x={barX + 6} y={laneY + 10} fontSize="9" className="inv">
+                                {label}
+                              </text>
+                            )}
+                          </g>
+                        );
+                      })}
+                      {lane.tools.map((tool) => {
+                        const tickX = x(tool.startTs);
+                        return (
+                          <rect
+                            key={tool.id}
+                            x={tickX}
+                            y={laneY + 14}
+                            width={Math.max(2, x(tool.endTs ?? tool.startTs) - tickX)}
+                            height="3"
+                            fill="#121212"
+                            opacity="0.55"
+                          >
+                            <title>{tool.label}</title>
+                          </rect>
+                        );
+                      })}
                     </g>
-                  );
-                })}
-                {toolSpans.map((span) => {
-                  const tickX = x(span.startTs);
-                  return (
-                    <rect
-                      key={span.id}
-                      x={tickX}
-                      y={rowY + 18}
-                      width={Math.max(2, x(span.endTs ?? span.startTs) - tickX)}
-                      height="4"
-                      fill="#121212"
-                      opacity="0.55"
-                    >
-                      <title>{span.label}</title>
-                    </rect>
                   );
                 })}
               </g>
@@ -342,9 +415,11 @@ export default function TimelineTile({
               {killTimeStr} kill
             </text>
           )}
-          <text x={nowX} y={axisY + 9} fontSize="8" className="t-blue" textAnchor="middle">
-            now {nowTimeStr}
-          </text>
+          {showNowLabel && (
+            <text x={nowX} y={axisY + 9} fontSize="8" className="t-blue" textAnchor={nowAnchor}>
+              now {nowTimeStr}
+            </text>
+          )}
           <text x={PLOT_X + PLOT_W} y={axisY + 9} fontSize="8" className="t-muted" textAnchor="end">
             {capStr} cap
           </text>

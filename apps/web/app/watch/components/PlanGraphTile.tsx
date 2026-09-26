@@ -1,12 +1,18 @@
 import React from "react";
 import type { Subtask } from "@punch/shared";
-import type { PlanGraphState, SlotLaneState, TakeoverBannerState } from "@/lib/trace/types";
+import type {
+  PlanGraphState,
+  SlotLaneState,
+  TakeoverBannerState,
+  TimelineSpan,
+} from "@/lib/trace/types";
 import { formatAgentDisplayName, formatTime } from "./formatters";
 
 interface PlanGraphTileProps {
   plan: PlanGraphState;
   activeTakeover: TakeoverBannerState | null;
   slots: Record<string, SlotLaneState>;
+  spans?: TimelineSpan[];
   runStartTime?: number;
   onSelectSubtask: (subtask: Subtask) => void;
   selectedSubtaskId?: string | null;
@@ -47,6 +53,7 @@ export default function PlanGraphTile({
   plan,
   activeTakeover,
   slots,
+  spans = [],
   runStartTime,
   onSelectSubtask,
   selectedSubtaskId,
@@ -200,10 +207,16 @@ export default function PlanGraphTile({
             const isFailed = st.status === "failed" || st.status === "degraded";
             const isPending = !isDone && !isRunning && !isFailed;
 
-            // Agent currently (or most recently) working this subtask, from slot state.
-            const workerAgentId = Object.values(slots).find(
+            // Agent working this subtask: the latest agent.started span for it
+            // (a replacement wins over the predecessor), falling back to slots.
+            const spanWorker = spans
+              .filter((s) => s.type === "agent" && s.subtaskId === st.id)
+              .sort((a, b) => a.startTs - b.startTs)
+              .at(-1)?.agentId;
+            const slotWorker = Object.values(slots).find(
               (s) => s.currentSubtaskId === st.id,
             )?.agentId;
+            const workerAgentId = spanWorker ?? slotWorker;
             const workerName = workerAgentId ? formatAgentDisplayName(workerAgentId) : null;
 
             const isNodeTakenOver =
@@ -231,6 +244,10 @@ export default function PlanGraphTile({
             const titleY = layout.y + layout.height * 0.42;
             const metaY = layout.y + layout.height * 0.74;
 
+            // SVG text cannot wrap: two short lines (id, then truncated title).
+            const shortTitle =
+              st.title.length > 15 ? `${st.title.slice(0, 14).trimEnd()}…` : st.title;
+
             return (
               <g
                 key={st.id}
@@ -252,14 +269,26 @@ export default function PlanGraphTile({
                 />
                 <text
                   x={centerX}
-                  y={titleY}
+                  y={titleY - 7}
+                  fontSize={layout.fontSizeMeta}
+                  fontWeight="700"
+                  textAnchor="middle"
+                  className={textClass}
+                  onClick={() => onSelectSubtask(st)}
+                >
+                  {st.id}
+                  <title>{`${st.id} · ${st.title}`}</title>
+                </text>
+                <text
+                  x={centerX}
+                  y={titleY + 6}
                   fontSize={layout.fontSizeTitle}
                   fontWeight="700"
                   textAnchor="middle"
                   className={textClass}
                   onClick={() => onSelectSubtask(st)}
                 >
-                  {st.id} {st.title}
+                  {shortTitle}
                 </text>
                 <text
                   x={centerX}

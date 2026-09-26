@@ -123,6 +123,7 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
             plan={state.plan}
             activeTakeover={state.takeover.active}
             slots={state.slots}
+            spans={state.timeline.spans}
             runStartTime={state.run.startTime}
             onSelectSubtask={(st) => setSelectedSubtask(st)}
             selectedSubtaskId={selectedSubtask?.id}
