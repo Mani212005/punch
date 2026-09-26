@@ -207,12 +207,15 @@ export default function PlanGraphTile({
             const isFailed = st.status === "failed" || st.status === "degraded";
             const isPending = !isDone && !isRunning && !isFailed;
 
-            // Agent working this subtask: the latest agent.started span for it
-            // (a replacement wins over the predecessor), falling back to slots.
-            const spanWorker = spans
+            // Agent working this subtask: the latest producer span for it
+            // (critic review spans don't count; a replacement wins over the
+            // predecessor), falling back to slot state.
+            const agentSpansForNode = spans
               .filter((s) => s.type === "agent" && s.subtaskId === st.id)
-              .sort((a, b) => a.startTs - b.startTs)
-              .at(-1)?.agentId;
+              .sort((a, b) => a.startTs - b.startTs);
+            const spanWorker =
+              agentSpansForNode.filter((s) => s.role !== "critic").at(-1)?.agentId ??
+              agentSpansForNode.at(-1)?.agentId;
             const slotWorker = Object.values(slots).find(
               (s) => s.currentSubtaskId === st.id,
             )?.agentId;
