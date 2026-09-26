@@ -7,8 +7,10 @@ import {
   createEventSource,
   LocalFileEventSource,
   parseJsonlEvents,
+  parseViewerUrl,
   reduceTrace,
   StaticFileEventSource,
+  ViewerTunnelEventSource,
 } from "../index.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -122,9 +124,47 @@ describe("Event Source Abstraction and Takeover Trace Verification", () => {
 
     const tunnelSrc = createEventSource({
       kind: "viewer-tunnel",
-      tunnelUrl: "https://tunnel.example.com",
+      engineBase: "https://tunnel.example.com",
+      runId: "run-1",
       viewerToken: "v-token",
     });
     expect(tunnelSrc.kind).toBe("viewer-tunnel");
+  });
+
+  it("ViewerTunnelEventSource hits the viewer-token run routes with ?token=", () => {
+    const source = new ViewerTunnelEventSource(
+      "https://abc.trycloudflare.com/",
+      "run-1",
+      "view-123",
+    );
+    expect(source.getEndpointUrl()).toBe(
+      "https://abc.trycloudflare.com/runs/run-1/events?token=view-123",
+    );
+    expect(source.getTraceUrl()).toBe(
+      "https://abc.trycloudflare.com/runs/run-1/trace?token=view-123",
+    );
+  });
+
+  it("parseViewerUrl accepts base, events, and trace viewer URLs", () => {
+    expect(parseViewerUrl("https://abc.trycloudflare.com/?token=view-123")).toEqual({
+      engineBase: "https://abc.trycloudflare.com",
+      runId: null,
+      token: "view-123",
+    });
+    expect(
+      parseViewerUrl("https://abc.trycloudflare.com/runs/run-1/events?token=view-123"),
+    ).toEqual({
+      engineBase: "https://abc.trycloudflare.com",
+      runId: "run-1",
+      token: "view-123",
+    });
+    expect(parseViewerUrl("https://abc.trycloudflare.com/runs/run-1/trace?token=view-123")).toEqual(
+      {
+        engineBase: "https://abc.trycloudflare.com",
+        runId: "run-1",
+        token: "view-123",
+      },
+    );
+    expect(parseViewerUrl("not a url")).toEqual({ engineBase: "", runId: null, token: null });
   });
 });

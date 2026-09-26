@@ -262,25 +262,34 @@ export class SSEEventSource implements TraceEventSource {
 export class ViewerTunnelEventSource implements TraceEventSource {
   readonly kind = "viewer-tunnel" as const;
   readonly id: string;
-  private readonly tunnelUrl: string;
-  private readonly viewerToken?: string;
+  private readonly engineBase: string;
+  private readonly runId: string;
+  private readonly viewerToken: string;
 
-  constructor(tunnelUrl: string, viewerToken?: string) {
-    this.tunnelUrl = tunnelUrl.replace(/\/$/, "");
+  /**
+   * Read-only live source through a `punch serve --tunnel` public URL.
+   * Hits the same viewer-token routes as the paired SSE source
+   * (`GET /runs/:id/events`, `GET /runs/:id/trace`) with the token as
+   * `?token=`, since remote viewers cannot always set headers. Never sends
+   * the pairing token and never touches a control route.
+   */
+  constructor(engineBase: string, runId: string, viewerToken: string) {
+    this.engineBase = engineBase.replace(/\/$/, "");
+    this.runId = runId;
     this.viewerToken = viewerToken;
-    this.id = "viewer-tunnel";
+    this.id = `viewer:${runId}`;
   }
 
   getEndpointUrl(): string {
-    const base = `${this.tunnelUrl}/events`;
-    if (this.viewerToken) {
-      return `${base}?token=${encodeURIComponent(this.viewerToken)}`;
-    }
-    return base;
+    return `${this.engineBase}/runs/${encodeURIComponent(this.runId)}/events?token=${encodeURIComponent(this.viewerToken)}`;
+  }
+
+  getTraceUrl(): string {
+    return `${this.engineBase}/runs/${encodeURIComponent(this.runId)}/trace?token=${encodeURIComponent(this.viewerToken)}`;
   }
 
   async fetchAll(): Promise<TraceEvent[]> {
-    const traceUrl = `${this.tunnelUrl}/trace${this.viewerToken ? `?token=${encodeURIComponent(this.viewerToken)}` : ""}`;
+    const traceUrl = this.getTraceUrl();
     const response = await fetch(traceUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch viewer trace from ${traceUrl}: ${response.status}`);
@@ -357,7 +366,7 @@ export type EventSourceConfig =
   | { kind: "static"; traceId: string; basePath?: string }
   | { kind: "file"; file: File }
   | { kind: "sse"; engineUrl: string; token: string; runId?: string }
-  | { kind: "viewer-tunnel"; tunnelUrl: string; viewerToken?: string };
+  | { kind: "viewer-tunnel"; engineBase: string; runId: string; viewerToken: string };
 
 export function createEventSource(config: EventSourceConfig): TraceEventSource {
   switch (config.kind) {
@@ -368,6 +377,38 @@ export function createEventSource(config: EventSourceConfig): TraceEventSource {
     case "sse":
       return new SSEEventSource(config.engineUrl, config.token, config.runId);
     case "viewer-tunnel":
-      return new ViewerTunnelEventSource(config.tunnelUrl, config.viewerToken);
+      return new ViewerTunnelEventSource(config.engineBase, config.runId, config.viewerToken);
+  }
+}
+
+export interface ParsedViewerUrl {
+  /** Engine/tunnel base, e.g. https://abc.trycloudflare.com */
+  engineBase: string;
+  /** Run id when the URL names one, else null. */
+  runId: string | null;
+  /** Viewer token from `?token=`, else null. */
+  token: string | null;
+}
+
+/**
+ * Parse anything the Watch page's viewer-URL input accepts: the base viewer
+ * URL printed by `punch serve --tunnel`, a per-run events/trace URL, or a
+ * bare base URL. Never throws: unparseable input yields empty fields the UI
+ * reports back to the viewer.
+ */
+export function parseViewerUrl(input: string): ParsedViewerUrl {
+  const trimmed = input.trim();
+  try {
+    const url = new URL(trimmed);
+    const token = url.searchParams.get("token");
+    const runMatch = /\/runs\/([^/]+)\/(events|trace)\/?$/.exec(url.pathname);
+    const engineBase = `${url.protocol}//${url.host}`;
+    return {
+      engineBase,
+      runId: runMatch?.[1] ? decodeURIComponent(runMatch[1]) : null,
+      token,
+    };
+  } catch {
+    return { engineBase: "", runId: null, token: null };
   }
 }
