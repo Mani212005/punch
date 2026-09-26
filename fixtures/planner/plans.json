@@ -1,0 +1,56 @@
+{
+  "description": "Recorded planner write_result payloads for the brief 'triage the dependencies of https://github.com/expressjs/express'. `valid` is a good DAG; `cycle` and `orphanInput` are the invalid shapes the correction round must catch.",
+  "brief": "Triage the dependencies of https://github.com/expressjs/express for known vulnerabilities and write a prioritized remediation report.",
+  "valid": {
+    "subtasks": [
+      {
+        "id": "s1",
+        "title": "Inventory dependencies",
+        "description": "Read package.json and the lockfile via GitHub contents; list runtime dependencies with resolved versions. Done when every dependency has a name and version.",
+        "dependsOn": [],
+        "roleHint": "researcher",
+        "output": { "key": "inventory", "schema": { "type": "object", "properties": { "dependencies": { "type": "array" } }, "required": ["dependencies"] } },
+        "inputKeys": []
+      },
+      {
+        "id": "s2",
+        "title": "Query vulnerabilities",
+        "description": "Query OSV (Advisory fallback) for every dependency in the inventory. Done when each dependency has a vulnerability list or an explicit unknown.",
+        "dependsOn": ["s1"],
+        "roleHint": "researcher",
+        "output": { "key": "vulns", "schema": { "type": "object", "properties": { "advisories": { "type": "array" } }, "required": ["advisories"] } },
+        "inputKeys": ["inventory"]
+      },
+      {
+        "id": "s3",
+        "title": "Assess upgrade risk",
+        "description": "For each vulnerable dependency read release notes between current and fixed versions. Done when each has a breaking-change risk or unknown.",
+        "dependsOn": ["s2"],
+        "roleHint": "researcher",
+        "output": { "key": "upgrade_risk" },
+        "inputKeys": ["inventory", "vulns"]
+      },
+      {
+        "id": "s4",
+        "title": "Write remediation report",
+        "description": "Write the prioritized remediation report from the blackboard. Done when every vulnerable dependency has a fixed version, risk and action, and unknowns are listed.",
+        "dependsOn": ["s2", "s3"],
+        "roleHint": "executor",
+        "output": { "key": "report" },
+        "inputKeys": ["vulns", "upgrade_risk"]
+      }
+    ]
+  },
+  "cycle": {
+    "subtasks": [
+      { "id": "s1", "title": "A", "description": "a", "dependsOn": ["s2"], "roleHint": "researcher", "output": { "key": "a" }, "inputKeys": [] },
+      { "id": "s2", "title": "B", "description": "b", "dependsOn": ["s1"], "roleHint": "executor", "output": { "key": "b" }, "inputKeys": [] }
+    ]
+  },
+  "orphanInput": {
+    "subtasks": [
+      { "id": "s1", "title": "Inventory", "description": "inv", "dependsOn": [], "roleHint": "researcher", "output": { "key": "inventory" }, "inputKeys": [] },
+      { "id": "s2", "title": "Report", "description": "rep", "dependsOn": ["s1"], "roleHint": "executor", "output": { "key": "report" }, "inputKeys": ["vulns"] }
+    ]
+  }
+}
