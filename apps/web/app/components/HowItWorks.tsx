@@ -379,7 +379,7 @@ export default function HowItWorks() {
                 strokeWidth="2"
               />
               <text x="334" y="62" fontSize="10" fontWeight="700">
-                HTTP API (Hono) + SSE
+                HTTP API (node:http) + SSE
               </text>
               <text x="610" y="62" fontSize="9" className="t-muted">
                 CORS · tokens · session persistence
@@ -647,16 +647,16 @@ export default function HowItWorks() {
               <rect
                 x="322"
                 y="316"
-                width="62"
+                width="84"
                 height="15"
                 fill="var(--bz-paper-2)"
                 stroke="var(--bz-ink)"
                 strokeWidth="1"
               />
-              <text x="353" y="327" fontSize="8" fontWeight="700" textAnchor="middle">
+              <text x="364" y="327" fontSize="8" fontWeight="700" textAnchor="middle">
                 Anthropic
               </text>
-              <text x="390" y="327" fontSize="8" className="t-muted">
+              <text x="412" y="327" fontSize="8" className="t-muted">
                 @anthropic-ai/sdk · betaZodTool · effort
               </text>
 
@@ -664,16 +664,16 @@ export default function HowItWorks() {
               <rect
                 x="322"
                 y="336"
-                width="62"
+                width="84"
                 height="15"
                 fill="var(--bz-paper-2)"
                 stroke="var(--bz-ink)"
                 strokeWidth="1"
               />
-              <text x="353" y="347" fontSize="8" fontWeight="700" textAnchor="middle">
+              <text x="364" y="347" fontSize="8" fontWeight="700" textAnchor="middle">
                 Gemini
               </text>
-              <text x="390" y="347" fontSize="8" className="t-muted">
+              <text x="412" y="347" fontSize="8" className="t-muted">
                 @google/genai · function declarations
               </text>
 
@@ -681,16 +681,16 @@ export default function HowItWorks() {
               <rect
                 x="322"
                 y="356"
-                width="62"
+                width="84"
                 height="15"
                 fill="var(--bz-paper-2)"
                 stroke="var(--bz-ink)"
                 strokeWidth="1"
               />
-              <text x="353" y="367" fontSize="7.5" fontWeight="700" textAnchor="middle">
-                OpenAI-c
+              <text x="364" y="367" fontSize="8" fontWeight="700" textAnchor="middle">
+                OpenAI-compat
               </text>
-              <text x="390" y="367" fontSize="8" className="t-muted">
+              <text x="412" y="367" fontSize="8" className="t-muted">
                 openai SDK · baseUrl · custom models
               </text>
 

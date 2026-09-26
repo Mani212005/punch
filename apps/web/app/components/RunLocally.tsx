@@ -5,10 +5,11 @@ export default function RunLocally() {
     <div className="bz-tile ink c6" id="run-locally">
       <div className="bz-label">run it locally</div>
       <div className="bz-log" style={{ padding: 0, background: "none" }}>
-        <div>$ npm i -g punch</div>
-        <div>$ punch config test</div>
-        <div>$ punch serve</div>
-        <div className="ok">&gt; paired · token 7f3a-… · open /console</div>
+        <div>$ git clone https://github.com/Mani212005/punch</div>
+        <div>$ pnpm install &amp;&amp; pnpm build</div>
+        <div>$ pnpm punch config test</div>
+        <div>$ pnpm punch serve</div>
+        <div className="ok">&gt; prints pairing token + viewer token</div>
       </div>
     </div>
   );
