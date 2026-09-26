@@ -25,9 +25,9 @@ export default function Header() {
         </Link>
       </div>
       <nav className="links">
-        <a href="#features">Features</a>
-        <Link href="/watch/takeover">Watch</Link>
-        <a href="#run-locally">Run locally</a>
+        <a href="/#features">Features</a>
+        <Link href="/watch/investigation">Watch</Link>
+        <a href="/#run-locally">Run locally</a>
         <a
           href="https://github.com/Mani212005/punch"
           target="_blank"

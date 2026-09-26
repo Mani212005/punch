@@ -1,14 +1,24 @@
 import React from "react";
-import type { BoardRunState, SlotLaneState } from "@/lib/trace/types";
+import type { BoardRunState, SlotLaneState, SlotRole } from "@/lib/trace/types";
 import { formatAgentDisplayName, formatAgentFull } from "./formatters";
 
 interface SlotsTileProps {
   run: BoardRunState;
   slots: Record<string, SlotLaneState>;
+  seenRoles: SlotRole[];
   planSubtasksCount: number;
 }
 
-const PREFERRED_ROLE_ORDER = ["planner", "researcher", "executor", "critic"];
+const PREFERRED_ROLE_ORDER: SlotRole[] = [
+  "planner",
+  "inventory",
+  "researcher",
+  "reachability",
+  "impact",
+  "investigator",
+  "critic",
+  "executor",
+];
 
 function formatRoleTitle(role: string): string {
   return role
@@ -32,19 +42,19 @@ function turnsAndCost(slot: SlotLaneState): string {
   return parts.join(" · ");
 }
 
-export default function SlotsTile({ run, slots, planSubtasksCount }: SlotsTileProps) {
+export default function SlotsTile({ run, slots, seenRoles, planSubtasksCount }: SlotsTileProps) {
   const orchestratorAgentId = run.orchestratorAgentId;
   const isRunActive = run.status === "running";
   const isRunCompleted = run.status === "completed";
 
-  // Collect all roles: preferred standard roles first, then any extra roles in slots
-  const roleKeys: string[] = [];
+  // Only roles that appeared in the trace get a card; states come from events.
+  const roleKeys: SlotRole[] = [];
   PREFERRED_ROLE_ORDER.forEach((role) => {
-    if (slots[role]) {
+    if (seenRoles.includes(role)) {
       roleKeys.push(role);
     }
   });
-  Object.keys(slots).forEach((role) => {
+  seenRoles.forEach((role) => {
     if (!roleKeys.includes(role)) {
       roleKeys.push(role);
     }

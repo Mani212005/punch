@@ -10,7 +10,7 @@ describe("Landing Page", () => {
     render(<LandingPage />);
     expect(screen.getByText("Punch")).toBeInTheDocument();
     expect(
-      screen.getByText("Agents that plan, delegate, and take over for each other."),
+      screen.getByText("Does this vulnerability actually matter to your repo?"),
     ).toBeInTheDocument();
     expect(screen.getByText("github.com/Mani212005/punch")).toBeInTheDocument();
   });
@@ -76,32 +76,36 @@ describe("Landing Page", () => {
     expect(screen.getByText(/Slot supervisor detects slot failure/i)).toBeInTheDocument();
   });
 
-  it("renders 6 feature tiles with links to trace moments", () => {
+  it("renders 6 investigation feature tiles with links to trace moments", () => {
     render(<FeatureTiles />);
-    expect(screen.getByText("planning and delegation")).toBeInTheDocument();
-    expect(screen.getByText("real tools, real failures")).toBeInTheDocument();
-    expect(screen.getByText("agent takeover")).toBeInTheDocument();
-    expect(screen.getByText("audit trail")).toBeInTheDocument();
-    expect(screen.getByText("budgets and stopping")).toBeInTheDocument();
-    expect(screen.getByText("human approval")).toBeInTheDocument();
+    for (const label of [
+      "reachability, proved",
+      "upgrade impact",
+      "sandbox validation",
+      "adversarial critic",
+      "agent takeover",
+      "evidence ledger + approval",
+    ]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
 
-    expect(screen.getByText("see 00:04 · clean run")).toHaveAttribute(
+    expect(screen.getByText("see the reachability verdict")).toHaveAttribute(
       "href",
-      "/watch/clean-run#00:04",
-    );
-    expect(screen.getByText("see 00:41 · chaos run")).toHaveAttribute(
-      "href",
-      "/watch/chaos-run#00:41",
+      "/watch/investigation#reachability",
     );
     expect(screen.getByText("see 01:12 · takeover run")).toHaveAttribute(
       "href",
       "/watch/takeover#01:12",
     );
+    expect(screen.getByText("open the ledger")).toHaveAttribute(
+      "href",
+      "/watch/investigation#ledger",
+    );
   });
 
-  it("renders the watch button pointing to /watch/takeover", () => {
+  it("renders the watch button pointing to /watch/investigation", () => {
     render(<Hero />);
-    const watchBtn = screen.getByRole("link", { name: /Watch the takeover run/i });
-    expect(watchBtn).toHaveAttribute("href", "/watch/takeover");
+    const watchBtn = screen.getByRole("link", { name: /Watch the investigation run/i });
+    expect(watchBtn).toHaveAttribute("href", "/watch/investigation");
   });
 });

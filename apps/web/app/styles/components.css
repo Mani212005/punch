@@ -561,7 +561,10 @@
 .bz-nav .links {
   margin-left: auto;
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  column-gap: 12px;
+  justify-content: flex-end;
   font-family: var(--bz-font-mono);
   font-size: 11px;
   text-transform: uppercase;
@@ -569,6 +572,20 @@
 }
 .bz-nav .links a {
   text-decoration: none;
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .bz-nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .bz-nav .links {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+    column-gap: 10px;
+    font-size: 10px;
+  }
 }
 .bz-mark {
   display: inline-grid;
