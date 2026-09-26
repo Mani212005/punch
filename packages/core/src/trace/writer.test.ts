@@ -37,24 +37,14 @@ describe("redactSecrets & redactString", () => {
   });
 
   it("redacts bearer tokens in strings", () => {
-    expect(redactString("Bearer my-super-secret-token")).toBe(
-      "Bearer [REDACTED]",
-    );
-    expect(redactString("bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9")).toBe(
-      "Bearer [REDACTED]",
-    );
+    expect(redactString("Bearer my-super-secret-token")).toBe("Bearer [REDACTED]");
+    expect(redactString("bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9")).toBe("Bearer [REDACTED]");
   });
 
   it("redacts Authorization headers in strings", () => {
-    expect(redactString("Authorization: Basic dXNlcjpwYXNz")).toBe(
-      "Authorization: [REDACTED]",
-    );
-    expect(redactString("Authorization: Bearer my-secret-token")).toBe(
-      "Authorization: [REDACTED]",
-    );
-    expect(redactString("proxy-authorization: token12345")).toBe(
-      "proxy-authorization: [REDACTED]",
-    );
+    expect(redactString("Authorization: Basic dXNlcjpwYXNz")).toBe("Authorization: [REDACTED]");
+    expect(redactString("Authorization: Bearer my-secret-token")).toBe("Authorization: [REDACTED]");
+    expect(redactString("proxy-authorization: token12345")).toBe("proxy-authorization: [REDACTED]");
   });
 
   it("redacts common API key patterns", () => {
@@ -102,9 +92,9 @@ describe("redactSecrets & redactString", () => {
     expect(redactString("https://api.example.com/v1?api_key=secretKey123&page=1")).toBe(
       "https://api.example.com/v1?api_key=[REDACTED]&page=1",
     );
-    expect(redactString("https://api.example.com/v1?key=AIzaSyA1234567890123456789012345678901")).toBe(
-      "https://api.example.com/v1?key=[REDACTED]",
-    );
+    expect(
+      redactString("https://api.example.com/v1?key=AIzaSyA1234567890123456789012345678901"),
+    ).toBe("https://api.example.com/v1?key=[REDACTED]");
   });
 });
 
@@ -283,7 +273,9 @@ describe("TraceWriter", () => {
 
   it("parseTrace throws error with line number for malformed JSON or schema violations", () => {
     expect(() =>
-      parseTrace('{"runId":"r1","seq":0,"ts":0,"kind":"route.skipped","role":"critic","reason":"p"}\ninvalid json\n'),
+      parseTrace(
+        '{"runId":"r1","seq":0,"ts":0,"kind":"route.skipped","role":"critic","reason":"p"}\ninvalid json\n',
+      ),
     ).toThrow(/Failed to parse JSON on line 2/);
 
     expect(() => parseTrace('{"kind": "invalid.kind", "runId": "r", "seq": 0, "ts": 0}\n')).toThrow(

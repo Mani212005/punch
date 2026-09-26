@@ -297,7 +297,9 @@ export async function* readTraceStream(filePath: string): AsyncIterable<TraceEve
     try {
       yield TraceEvent.parse(parsedJson);
     } catch (err) {
-      throw new Error(`Invalid trace event schema on line ${lineNumber}: ${(err as Error).message}`);
+      throw new Error(
+        `Invalid trace event schema on line ${lineNumber}: ${(err as Error).message}`,
+      );
     }
   }
 }

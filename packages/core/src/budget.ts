@@ -1,11 +1,5 @@
-import type {
-  Budgets,
-  Pricing,
-  Usage,
-} from "@punch/shared";
-import {
-  TraceEvent,
-} from "@punch/shared";
+import type { Budgets, Pricing, Usage } from "@punch/shared";
+import { TraceEvent } from "@punch/shared";
 
 export type BudgetExceededReason = "steps" | "usd" | "wallClock";
 
@@ -67,8 +61,7 @@ export function calculateCost(usage: Usage, pricing?: Pricing): UsageCostResult 
 export class BudgetMeter {
   readonly budgets: Budgets;
   private readonly pricingMap?:
-    | Record<string, Pricing>
-    | ((agentId: string) => Pricing | undefined);
+    Record<string, Pricing> | ((agentId: string) => Pricing | undefined);
   private readonly now: () => number;
   private readonly wrapUpSteps: number;
   private readonly onExceededCallback?: (reason: BudgetExceededReason) => void;
