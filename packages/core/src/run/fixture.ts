@@ -313,7 +313,9 @@ class FixtureAdapter implements AgentAdapter {
     yield {
       type: "text",
       text: handoff
-        ? `Taking over ${subtaskId} from ${handoff.predecessor.agentId}: ${handoff.cachedToolResults.length} cached tool results, ${handoff.filesInspected.length} files inspected, ${handoff.evidenceRecords.length} evidence records. Continuing, not restarting.`
+        ? handoff.cachedToolResults.length > 0
+          ? `Taking over ${subtaskId} from ${handoff.predecessor.agentId}: ${handoff.cachedToolResults.length} cached tool results, ${handoff.filesInspected.length} files inspected, ${handoff.evidenceRecords.length} evidence records. Continuing, not restarting.`
+          : `Taking over ${subtaskId} from ${handoff.predecessor.agentId}: no cached results (previous agent used its own tools). Continuing from inputs and notes, not restarting.`
         : `Working on ${subtaskId}.`,
     };
     const calls = script.calls ?? [];
