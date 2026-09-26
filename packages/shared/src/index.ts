@@ -7,3 +7,4 @@ export * from "./handoff.js";
 export * from "./agent.js";
 export * from "./trace.js";
 export * from "./api.js";
+export { z } from "zod";
