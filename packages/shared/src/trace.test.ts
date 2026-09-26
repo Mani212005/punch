@@ -172,6 +172,7 @@ const payloads: { [K in TraceEventKind]: Record<string, unknown> } = {
       baseline: runResult,
       candidate: runResult,
       newFailures: [],
+      changedFiles: [],
       fixedFailures: [],
       verdict: "PASS",
       evidenceIds: ["e1"],
@@ -243,6 +244,18 @@ const PLAN_KINDS = [
 describe("trace event union", () => {
   it("covers exactly the kinds in plan.md 3.7 and 8", () => {
     expect([...TRACE_EVENT_KINDS].sort()).toEqual([...PLAN_KINDS].sort());
+  });
+
+  it("evidence.recorded accepts the validator, which is code and has no agent", () => {
+    const event = {
+      runId: "r1",
+      seq: 8,
+      ts: 1,
+      kind: "evidence.recorded",
+      role: "validator",
+      evidence: evidenceRecord,
+    };
+    expect(TraceEvent.parse(event)).toEqual(event);
   });
 
   it.each(PLAN_KINDS)("%s round-trips through JSON", (kind) => {

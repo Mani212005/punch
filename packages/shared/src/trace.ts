@@ -162,7 +162,13 @@ export const TraceEvent = z.discriminatedUnion("kind", [
     verifier: Claim.shape.verifier.unwrap(),
     rationale: z.string(),
   }),
-  event("evidence.recorded", { ...who, evidence: EvidenceRecord }),
+  // The code-driven validator records sandbox_run evidence; it is not a slot and has no agent.
+  event("evidence.recorded", {
+    role: z.union([SlotRole, z.literal("validator")]),
+    agentId: z.string().optional(),
+    subtaskId: z.string().optional(),
+    evidence: EvidenceRecord,
+  }),
   event("sandbox.started", {
     findingId: z.string(),
     dependency: z.string(),

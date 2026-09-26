@@ -1,0 +1,13 @@
+{
+  "name": "sandbox-fixture-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "greeter": "file:./vendor/greeter-1"
+  }
+}

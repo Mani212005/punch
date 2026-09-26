@@ -33,3 +33,10 @@ export * from "./roles/review.js";
 
 // Run loop
 export * from "./run/index.js";
+
+// Validation sandbox (E5)
+export * from "./sandbox/runner.js";
+export * from "./sandbox/docker.js";
+export * from "./sandbox/parse-tests.js";
+export * from "./sandbox/compare.js";
+export * from "./sandbox/validate.js";

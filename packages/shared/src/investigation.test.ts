@@ -24,6 +24,7 @@ const sandbox = {
   baseline: run,
   candidate: run,
   newFailures: [],
+  changedFiles: [],
   fixedFailures: [],
   verdict: "PASS",
   evidenceIds: [],

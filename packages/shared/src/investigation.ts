@@ -152,6 +152,10 @@ export const SandboxValidation = z.object({
   newFailures: z.array(z.string()).default([]),
   /** Tests failing in baseline and fixed in candidate. */
   fixedFailures: z.array(z.string()).default([]),
+  /** Repo-relative files that differ between the baseline and candidate copies (manifest and lockfile). */
+  changedFiles: z.array(z.string()).default([]),
+  /** Unified diff of the changed files, truncated. */
+  diff: z.string().optional(),
   verdict: SandboxVerdict,
   evidenceIds: z.array(z.string()).default([]),
 });
