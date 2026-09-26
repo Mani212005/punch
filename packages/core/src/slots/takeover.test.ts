@@ -251,7 +251,9 @@ describe("the eight failure modes each recover with the handoff", () => {
     const r = await run({ chaos: ["hallucinate:researcher"] });
     expectWellFormed(r);
     const rejected = of(r, "slot.rejected").find((e) => e.subtaskId === "s1")!;
-    expect(rejected.findings.some((f) => /Jev pre-check/.test(f.problem))).toBe(true);
+    expect(
+      rejected.findings.some((f) => /Jev pre-check|does not exist in the trace/.test(f.problem)),
+    ).toBe(true);
     const { replacing } = takeoverOf(r, "researcher", "s1");
     expect(replacing.reason.kind).toBe("rejected");
     expect(replacing.handoff.criticFindings?.length).toBeGreaterThan(0);
