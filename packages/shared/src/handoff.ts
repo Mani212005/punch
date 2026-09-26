@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BlackboardEntry } from "./blackboard.js";
 import { FailureReason } from "./slots.js";
+import { EvidenceRecord } from "./investigation.js";
 import { Subtask } from "./plan.js";
 
 export const Finding = z.object({
@@ -32,6 +33,10 @@ export const Handoff = z.object({
   inputs: z.record(z.string(), BlackboardEntry),
   cachedToolResults: z.array(ToolResultSummary),
   partialNotes: z.string().nullable(),
+  /** Repository files the predecessor already read, so the replacement does not re-read them. */
+  filesInspected: z.array(z.string()).default([]),
+  /** Evidence the predecessor recorded in this subtask. */
+  evidenceRecords: z.array(EvidenceRecord).default([]),
   criticFindings: z.array(Finding).nullable(),
   budget: z.object({
     stepsRemaining: z.number(),

@@ -1,10 +1,33 @@
 import { z } from "zod";
 
-export const Role = z.enum(["orchestrator", "planner", "researcher", "executor", "critic"]);
+/**
+ * `researcher` is the vulnerability research role. The validator (sandbox) is code, not a
+ * role: it never fills an LLM slot (plan.md 1).
+ */
+export const Role = z.enum([
+  "orchestrator",
+  "planner",
+  "inventory",
+  "researcher",
+  "reachability",
+  "impact",
+  "investigator",
+  "critic",
+  "executor",
+]);
 export type Role = z.infer<typeof Role>;
 
 /** Roles that occupy a run slot (the orchestrator is a session, not a slot). */
-export const SlotRole = z.enum(["planner", "researcher", "executor", "critic"]);
+export const SlotRole = z.enum([
+  "planner",
+  "inventory",
+  "researcher",
+  "reachability",
+  "impact",
+  "investigator",
+  "critic",
+  "executor",
+]);
 export type SlotRole = z.infer<typeof SlotRole>;
 
 export const CostTier = z.enum(["low", "medium", "high"]);

@@ -28,6 +28,34 @@ const subtask = {
   status: "pending" as const,
 };
 
+const evidenceRecord = {
+  id: "e1",
+  kind: "static_search" as const,
+  ref: "rg foo.parse src/",
+  excerpt: "no matches",
+  fetchedAt: 1_700_000_000_000,
+  tool: "repo_search",
+};
+const claim = {
+  id: "c1",
+  text: "foo.parse() is not called",
+  kind: "reachability" as const,
+  findingId: "f1",
+  author: { role: "reachability" as const, agentId: "a1" },
+  evidenceRefs: ["e1"],
+  status: "proposed" as const,
+  verifier: null,
+};
+const verifier = { role: "critic" as const, agentId: "a4" };
+const stepResult = { status: "pass" as const, exitCode: 0, durationMs: 1200, logTail: "ok" };
+const runResult = {
+  install: stepResult,
+  build: stepResult,
+  test: stepResult,
+  counts: { total: 187, passed: 187, failed: 0, skipped: 0 },
+  failingTests: [],
+};
+
 const payloads: { [K in TraceEventKind]: Record<string, unknown> } = {
   "run.started": {
     task: { repoUrl: "https://github.com/a/b" },
@@ -91,6 +119,8 @@ const payloads: { [K in TraceEventKind]: Record<string, unknown> } = {
     handoff: {
       inputKeys: ["deps"],
       cachedResultCount: 3,
+      filesInspectedCount: 14,
+      evidenceRecordCount: 2,
       partialNotes: "half done",
       criticFindings: null,
       budget,
@@ -123,6 +153,39 @@ const payloads: { [K in TraceEventKind]: Record<string, unknown> } = {
     attempt: 1,
     findings: [finding],
   },
+  "claim.recorded": { claim },
+  "claim.verified": { claimId: "c1", verifier, rationale: "search reproduced" },
+  "claim.refuted": { claimId: "c1", verifier, rationale: "call site found in src/a.ts" },
+  "evidence.recorded": { ...who, evidence: evidenceRecord },
+  "sandbox.started": {
+    findingId: "f1",
+    dependency: "foo",
+    from: "2.1.4",
+    to: "2.4.0",
+    isolation: "docker",
+  },
+  "sandbox.step": { findingId: "f1", phase: "candidate", step: "install", result: stepResult },
+  "sandbox.finished": {
+    findingId: "f1",
+    validation: {
+      isolation: "docker",
+      baseline: runResult,
+      candidate: runResult,
+      newFailures: [],
+      fixedFailures: [],
+      verdict: "PASS",
+      evidenceIds: ["e1"],
+    },
+  },
+  "remediation.proposed": {
+    findingId: "f1",
+    action: "pull_request",
+    dependency: "foo",
+    from: "2.1.4",
+    to: "2.4.0",
+    approvalId: "ap1",
+    summary: "Upgrade foo to 2.4.0",
+  },
   "approval.requested": { approvalId: "ap1", tool: "github_create_issue", payload: { title: "x" } },
   "approval.granted": { approvalId: "ap1", decidedBy: "cli" },
   "approval.denied": { approvalId: "ap1", decidedBy: "console", reason: "nope" },
@@ -137,7 +200,7 @@ const payloads: { [K in TraceEventKind]: Record<string, unknown> } = {
   "run.finished": { status: "degraded", summary: "one subtask degraded", reportKey: "report" },
 };
 
-// plan.md 3.7, verbatim.
+// plan.md 3.7 plus the investigation events in plan.md 8.
 const PLAN_KINDS = [
   "run.started",
   "route.decided",
@@ -160,6 +223,14 @@ const PLAN_KINDS = [
   "slot.replaced",
   "slot.exhausted",
   "critic.verdict",
+  "claim.recorded",
+  "claim.verified",
+  "claim.refuted",
+  "evidence.recorded",
+  "sandbox.started",
+  "sandbox.step",
+  "sandbox.finished",
+  "remediation.proposed",
   "approval.requested",
   "approval.granted",
   "approval.denied",
@@ -170,7 +241,7 @@ const PLAN_KINDS = [
 ];
 
 describe("trace event union", () => {
-  it("covers exactly the kinds in plan.md 3.7", () => {
+  it("covers exactly the kinds in plan.md 3.7 and 8", () => {
     expect([...TRACE_EVENT_KINDS].sort()).toEqual([...PLAN_KINDS].sort());
   });
 

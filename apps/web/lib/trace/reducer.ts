@@ -33,7 +33,11 @@ function createInitialSlotLane(role: SlotRole): SlotLaneState {
 export function createInitialBoardState(): BoardState {
   const slots: Record<SlotRole, SlotLaneState> = {
     planner: createInitialSlotLane("planner"),
+    inventory: createInitialSlotLane("inventory"),
     researcher: createInitialSlotLane("researcher"),
+    reachability: createInitialSlotLane("reachability"),
+    impact: createInitialSlotLane("impact"),
+    investigator: createInitialSlotLane("investigator"),
     executor: createInitialSlotLane("executor"),
     critic: createInitialSlotLane("critic"),
   };
