@@ -2,14 +2,21 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { TraceEvent } from "@punch/shared";
+import type { Config, TraceEvent } from "@punch/shared";
+import { CliProvider } from "@punch/shared";
+import { NO_CHAOS } from "../adapters/agent.js";
 import { TraceEvent as TraceEventSchema } from "@punch/shared";
 import { afterAll, describe, expect, it } from "vitest";
 import { CallbackApprovalGate } from "../approval.js";
 import { TOOL_SPECS } from "../tools/registry.js";
 import { parseTrace } from "../trace/writer.js";
 import { fixtureRunOptions, loadRunFixture, type RunFixture } from "./fixture.js";
-import { AdapterRegistry, createDefaultAdapterRegistry } from "./registry.js";
+import {
+  AdapterRegistry,
+  createDefaultAdapterRegistry,
+  testAgentHealth,
+  testProviderHealth,
+} from "./registry.js";
 import { runLoop, type RunLoopOptions, type RunResult } from "./loop.js";
 
 const FIXTURE = path.resolve(fileURLToPath(import.meta.url), "../../../../../fixtures/runs/clean");
@@ -410,6 +417,51 @@ describe("adapter selection", () => {
   it("the default registry serves anthropic", () => {
     const registry = createDefaultAdapterRegistry();
     expect(registry.kinds()).toEqual(expect.arrayContaining(["anthropic", "gemini"]));
+  });
+
+  it("the default registry resolves every CLI provider kind", () => {
+    const registry = createDefaultAdapterRegistry();
+    for (const kind of CliProvider.shape.kind.options) {
+      const provider = { id: "p", kind };
+      const agent = {
+        id: "a",
+        displayName: "A",
+        providerId: "p",
+        model: "m",
+        costTier: "low" as const,
+        roles: ["researcher" as const],
+        strengths: "",
+      };
+      const adapter = registry.create({
+        agent,
+        provider,
+        executeTool: async () => null,
+        chaos: NO_CHAOS,
+      });
+      expect(typeof adapter.test).toBe("function");
+    }
+  });
+
+  it("testAgentHealth runs the real adapter test() and reports unknown agents", async () => {
+    const config = {
+      providers: [{ id: "p", kind: "claude-code" as const, binary: "punch-no-such-binary" }],
+      agents: [
+        {
+          id: "a",
+          displayName: "A",
+          providerId: "p",
+          model: "haiku",
+          costTier: "low" as const,
+          roles: ["researcher" as const],
+          strengths: "",
+        },
+      ],
+    } as unknown as Config;
+    const missing = await testAgentHealth("a", config);
+    expect(missing.ok).toBe(false);
+    expect(missing.detail).not.toContain("not built yet");
+    expect((await testAgentHealth("nope", config)).detail).toContain("not found");
+    expect((await testProviderHealth("p", config)).ok).toBe(false);
   });
 });
 
