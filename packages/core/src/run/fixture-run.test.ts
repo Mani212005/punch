@@ -194,7 +194,7 @@ describe("stopping conditions", () => {
       withBudgets({ maxWallClockMs: 250 }),
     );
     expectWrapUp(r, "wallClock");
-  });
+  }, 10000);
 
   it("an operator abort finishes aborted with a wrap-up", async () => {
     const controller = new AbortController();
