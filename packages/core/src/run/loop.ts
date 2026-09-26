@@ -25,7 +25,7 @@ import {
   type ProducerInput,
   type RoleDeps,
 } from "../roles/common.js";
-import { reviewDraft } from "../roles/critic.js";
+import { acceptedVerdict, reviewDraft } from "../roles/critic.js";
 import { runExecutor, REMEDIATION_REPORT_SCHEMA } from "../roles/executor.js";
 import { runResearcher } from "../roles/researcher.js";
 import { produceWithReview } from "../roles/review.js";
@@ -607,7 +607,7 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
           ),
         ),
       review: async (draft, attempt) => {
-        if (handler.reviewed === false) return { verdict: "accepted" as const, findings: [] };
+        if (handler.reviewed === false) return acceptedVerdict(subtask.id);
         try {
           const verdict = await withRetries(() =>
             invoke(criticSlot, subtask.id, "medium", ledger, (deps) =>
@@ -629,7 +629,7 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
           const detail = errText(err);
           criticSlot.fail(subtask.id, { kind: "failed", detail });
           unreviewed = `unreviewed: the critic failed (${detail})`;
-          return { verdict: "accepted" as const, findings: [] };
+          return acceptedVerdict(subtask.id);
         }
       },
       commit: (draft) =>

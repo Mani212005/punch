@@ -283,6 +283,40 @@ describe("failure, replan and rejection", () => {
     expect(r.status).toBe("completed");
   });
 
+  it("rejects an unsupported reachability claim, replans to create and complete a Reachability task, and accepts on second critique", async () => {
+    const finding = {
+      claim: "foo.parse is reachable from public route",
+      problem: "Reachability claim was unsupported: no call-site analysis was performed.",
+      severity: "blocker" as const,
+      requestedTask: {
+        title: "Reachability analysis",
+        description: "Perform call-site analysis for foo.parse",
+        roleHint: "researcher" as const,
+      },
+    };
+    const r = await run({}, (f) => {
+      replacementPlan(f, true);
+      f.agents.critic = { reject: { s2: [finding] } };
+    });
+    expectWellFormed(r);
+    // 1. Initial critique rejects s2
+    const rejectedVerdicts = of(r, "critic.verdict").filter(
+      (e) => e.subtaskId === "s2" && e.verdict === "rejected",
+    );
+    expect(rejectedVerdicts).toHaveLength(2);
+    expect(of(r, "slot.rejected")).toHaveLength(1);
+    // 2. Replan is triggered
+    expect(of(r, "replan.triggered")).toHaveLength(1);
+    expect(of(r, "replan.triggered")[0]!.reason).toContain("Reachability analysis");
+    // 3. New task s2b runs and is critiqued and accepted
+    const acceptedVerdicts = of(r, "critic.verdict").filter(
+      (e) => e.subtaskId === "s2b" && e.verdict === "accepted",
+    );
+    expect(acceptedVerdicts).toHaveLength(1);
+    // 4. Overall run completes successfully
+    expect(r.status).toBe("completed");
+  });
+
   it("a rejection without a requested task degrades without a replan", async () => {
     const r = await run({}, (f) => {
       f.agents.critic = {
