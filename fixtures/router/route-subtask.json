@@ -1,0 +1,35 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "assignee": {
+      "type": "choice",
+      "choice": "researcher",
+      "confidence": 1,
+      "probabilities": {
+        "researcher": 1,
+        "human": 0,
+        "executor": 0,
+        "none_needed": 0
+      }
+    },
+    "complexity": {
+      "type": "score",
+      "score": 0.01,
+      "confidence": 0.99,
+      "legend": {
+        "0": "low: a mechanical lookup or transformation with an obvious answer.",
+        "1": "medium: needs some reasoning over several inputs.",
+        "2": "high: needs deep multi-step reasoning, weighing conflicting evidence, or careful synthesis."
+      },
+      "probabilities": {
+        "0": 0.99,
+        "1": 0.01,
+        "2": 0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 536,
+    "output_tokens": 67
+  }
+}

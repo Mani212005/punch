@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createJev, createRecordedTransport, JevResponse } from "./jev.js";
 import { classifyErrorByCode } from "./classify-error.js";
 import { difficultyFromScore, effortFromComplexity } from "./policy.js";
+
+const fixtureDir = new URL("../../../../fixtures/router/", import.meta.url);
+const readFixture = (name: string) => JSON.parse(readFileSync(new URL(name, fixtureDir), "utf8"));
 
 const agent = (id: string, roles: string[]) => ({
   id,
@@ -91,6 +95,71 @@ describe("Jev request shape", () => {
         usage: { input_tokens: 1, output_tokens: 1 },
       }),
     ).toThrow();
+  });
+
+  it("parses real responses for noul, score, choice from fixtures/router", () => {
+    const noulFixture = readFixture("noul.json");
+    const scoreFixture = readFixture("score.json");
+    const choiceFixture = readFixture("choice.json");
+
+    expect(JevResponse.parse(noulFixture)).toMatchObject({
+      model: "jev-1.13.0",
+      answers: { needs_external_data: { type: "noul", noul: 0.43 } },
+      usage: { input_tokens: 296, output_tokens: 22 },
+    });
+    expect(JevResponse.parse(scoreFixture)).toMatchObject({
+      model: "jev-1.13.0",
+      answers: {
+        difficulty: {
+          type: "score",
+          score: 0.69,
+          confidence: 0.53,
+          probabilities: { "0": 0.31, "1": 0.69, "2": 0 },
+        },
+      },
+    });
+    expect(JevResponse.parse(choiceFixture)).toMatchObject({
+      model: "jev-1.13.0",
+      answers: {
+        error_class: {
+          type: "choice",
+          choice: "not_found",
+          confidence: 1,
+        },
+      },
+    });
+  });
+
+  it("evaluates real recorded fixtures directly in createRecordedTransport", async () => {
+    const transport = createRecordedTransport([
+      readFixture("choice.json"),
+      readFixture("route-task.json"),
+      readFixture("route-subtask.json"),
+    ]);
+    const jev = createJev(transport);
+
+    const errorResult = await jev.classifyError({ text: "GET /x returned 404", status: 404 });
+    expect(errorResult.errorClass).toBe("not_found");
+    expect(errorResult.confidence).toBe(1);
+
+    const subtaskResult = await jev.routeSubtask({
+      subtask: { title: "Query OSV", description: "check osv", roleHint: "researcher" },
+      brief: "Triage dependencies",
+    });
+    expect(subtaskResult.assignee.choice).toBe("researcher");
+    expect(subtaskResult.complexity.score).toBeCloseTo(0.01);
+
+    const taskResult = await jev.routeTask({
+      task: { brief: "b", expectedOutputs: ["report"], irreversibleActionsPossible: true },
+      agents: [agent("cheap", ["researcher"]), agent("deep", ["researcher"])],
+      preferences: "cheap for research",
+      budget: { maxSteps: 50, maxUsd: 2, maxWallClockMs: 600_000 },
+      roles: ["researcher"],
+    });
+    expect(taskResult.difficulty.score).toBeCloseTo(0.84);
+    expect(taskResult.roles.researcher?.choice).toBe("cheap");
+    expect(taskResult.needsExternalData).toBeCloseTo(0.94);
+    expect(taskResult.isSensitive).toBeCloseTo(0.25);
   });
 });
 
