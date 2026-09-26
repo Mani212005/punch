@@ -227,6 +227,29 @@ export const RecommendedAction = z.enum([
 ]);
 export type RecommendedAction = z.infer<typeof RecommendedAction>;
 
+/** E9: supply-chain anomaly signal about a package release, reported beside CVE findings. */
+export const SupplyChainSignalKind = z.enum([
+  "install_script",
+  "maintainer_change",
+  "new_dependency",
+  "release_change",
+  "provenance_regression",
+  "integrity_missing",
+]);
+export type SupplyChainSignalKind = z.infer<typeof SupplyChainSignalKind>;
+
+export const SupplyChainSignal = z.object({
+  kind: SupplyChainSignalKind,
+  severity: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  /** Plain-words description of what was observed. */
+  detail: z.string(),
+  /** Version the signal was observed on. */
+  version: z.string(),
+  /** Version it was compared against, when the signal is a diff. */
+  comparedTo: z.string().optional(),
+});
+export type SupplyChainSignal = z.infer<typeof SupplyChainSignal>;
+
 /** One dependency vulnerability investigated end to end (report section 8, "Finding #n"). */
 export const InvestigationFinding = z.object({
   id: z.string(),
@@ -243,6 +266,8 @@ export const InvestigationFinding = z.object({
   /** Rationale for the recommendation, in plain words. */
   reasoning: z.string().optional(),
   claimIds: z.array(z.string()).default([]),
+  /** E9 stretch: supply-chain anomaly signals for this dependency version. */
+  supplyChain: z.array(SupplyChainSignal).optional(),
 });
 export type InvestigationFinding = z.infer<typeof InvestigationFinding>;
 

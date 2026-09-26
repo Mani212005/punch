@@ -50,6 +50,11 @@ function criticChipClass(verdict: InvestigationFinding["critic"]): string {
   return "ghost";
 }
 
+function signalChipClass(severity: "LOW" | "MEDIUM" | "HIGH"): string {
+  if (severity === "HIGH") return "fail";
+  return "warn";
+}
+
 function FindingTile({ finding, index }: { finding: InvestigationFinding; index: number }) {
   const sandboxVerdict = finding.sandbox?.verdict ?? "NOT_RUN";
   const upgradeTo = finding.upgrade.to ?? "no patched version known";
@@ -139,6 +144,32 @@ function FindingTile({ finding, index }: { finding: InvestigationFinding; index:
           <span className={`bz-chip ${criticChipClass(finding.critic)}`}>{finding.critic}</span>
         </div>
       </div>
+      {finding.supplyChain && finding.supplyChain.length > 0 && (
+        <div
+          data-testid={`supply-chain-${finding.id}`}
+          style={{
+            borderTop: "2px solid var(--bz-ink)",
+            paddingTop: "8px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+          }}
+        >
+          <span className="bz-label" style={{ fontSize: "9px" }}>
+            supply-chain signals
+          </span>
+          {finding.supplyChain.map((sig, i) => (
+            <div key={i} style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
+              <span className={`bz-chip ${signalChipClass(sig.severity)}`}>
+                {sig.kind.replace(/_/g, " ")}
+              </span>
+              <span className="bz-muted" style={{ fontSize: "12px", overflowWrap: "anywhere" }}>
+                {sig.detail}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <div
         style={{
           borderTop: "2px solid var(--bz-ink)",

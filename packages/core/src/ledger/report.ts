@@ -83,6 +83,12 @@ ${s.requiresHumanReview}
       const evidence = this.renderEvidence(f, report);
       md += `Evidence:\n${evidence}\n\n`;
 
+      if (f.supplyChain && f.supplyChain.length > 0) {
+        md += `Supply-chain signals:\n${f.supplyChain
+          .map((sig) => `! ${sig.kind} (${sig.severity}): ${sig.detail}`)
+          .join("\n")}\n\n`;
+      }
+
       const toVer = f.upgrade.to || "N/A";
       md += `Upgrade:\n${f.upgrade.from} → ${toVer}\n\n`;
       md += `Upgrade impact:\n${f.upgradeImpact?.level || "UNKNOWN"}\n\n`;

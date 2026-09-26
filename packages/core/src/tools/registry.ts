@@ -4,7 +4,8 @@ import { type ToolCache } from "./cache.js";
 import { applyToolChaos, type ChaosConfig, type ToolChaosMode } from "./chaos.js";
 import { GitHubClient } from "./github.js";
 import { OSVClient } from "./osv.js";
-import { NpmClient } from "./npm.js";
+import { NpmClient, type NpmPackageMetadata } from "./npm.js";
+import { analyzeSupplyChain } from "../supplychain/signals.js";
 import { GitHubAdvisoryClient } from "./gh-advisory.js";
 import { buildDependencyInventory } from "./inventory.js";
 import { HttpError } from "./http.js";
@@ -265,6 +266,24 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
         package: { type: "string", description: "Package name" },
       },
       required: ["package"],
+    },
+    irreversible: false,
+  },
+  analyze_supply_chain: {
+    name: "analyze_supply_chain",
+    description:
+      "Flag supply-chain anomaly signals for an npm release (install scripts, maintainer changes, new dependencies, unusual release changes, lost provenance/integrity). Returns an empty list for clean releases.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        package: { type: "string", description: "Package name" },
+        version: { type: "string", description: "Release version to analyze" },
+        previousVersion: {
+          type: "string",
+          description: "Optional version to compare against; defaults to the prior release",
+        },
+      },
+      required: ["package", "version"],
     },
     irreversible: false,
   },
@@ -1108,6 +1127,24 @@ export async function executeTool<T = unknown>(
           { package: input.package as string },
           context,
         );
+        break;
+      }
+      case "analyze_supply_chain": {
+        const res = await getPackageMetadataWithFallback(
+          { package: input.package as string },
+          context,
+        );
+        output = {
+          package: res.package,
+          version: input.version as string,
+          status: res.status,
+          signals: res.metadata
+            ? analyzeSupplyChain(res.metadata as NpmPackageMetadata, {
+                version: input.version as string,
+                previousVersion: input.previousVersion as string | undefined,
+              })
+            : [],
+        };
         break;
       }
       case "parse_dependency_inventory": {
