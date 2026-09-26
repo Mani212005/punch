@@ -3,6 +3,14 @@ import { BlackboardEntry } from "./blackboard.js";
 import { Effort, ErrorClass, Provenance, Role, SlotRole } from "./common.js";
 import { Difficulty } from "./config.js";
 import { Finding } from "./handoff.js";
+import {
+  Claim,
+  EvidenceRecord,
+  SandboxIsolation,
+  SandboxStepName,
+  SandboxStepResult,
+  SandboxValidation,
+} from "./investigation.js";
 import { Subtask } from "./plan.js";
 import { FailureReason, StandbyEntry } from "./slots.js";
 
@@ -20,6 +28,8 @@ export const HandoffSummary = z.object({
   inputKeys: z.array(z.string()),
   cachedResultCount: z.number().int().nonnegative(),
   partialNotes: z.string().nullable(),
+  filesInspectedCount: z.number().int().nonnegative().optional(),
+  evidenceRecordCount: z.number().int().nonnegative().optional(),
   criticFindings: z.array(Finding).nullable(),
   budget: z.object({
     stepsRemaining: z.number(),
@@ -140,6 +150,41 @@ export const TraceEvent = z.discriminatedUnion("kind", [
     verdict: z.enum(["accepted", "rejected"]),
     attempt: z.number().int().positive(),
     findings: z.array(Finding),
+  }),
+  event("claim.recorded", { claim: Claim }),
+  event("claim.verified", {
+    claimId: z.string(),
+    verifier: Claim.shape.verifier.unwrap(),
+    rationale: z.string().optional(),
+  }),
+  event("claim.refuted", {
+    claimId: z.string(),
+    verifier: Claim.shape.verifier.unwrap(),
+    rationale: z.string(),
+  }),
+  event("evidence.recorded", { ...who, evidence: EvidenceRecord }),
+  event("sandbox.started", {
+    findingId: z.string(),
+    dependency: z.string(),
+    from: z.string(),
+    to: z.string(),
+    isolation: SandboxIsolation,
+  }),
+  event("sandbox.step", {
+    findingId: z.string(),
+    phase: z.enum(["baseline", "candidate"]),
+    step: SandboxStepName,
+    result: SandboxStepResult,
+  }),
+  event("sandbox.finished", { findingId: z.string(), validation: SandboxValidation }),
+  event("remediation.proposed", {
+    findingId: z.string(),
+    action: z.enum(["issue", "pull_request"]),
+    dependency: z.string(),
+    from: z.string(),
+    to: z.string().nullable(),
+    approvalId: z.string().optional(),
+    summary: z.string(),
   }),
   event("approval.requested", {
     approvalId: z.string(),

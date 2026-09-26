@@ -4,6 +4,7 @@ export * from "./slots.js";
 export * from "./blackboard.js";
 export * from "./plan.js";
 export * from "./handoff.js";
+export * from "./investigation.js";
 export * from "./agent.js";
 export * from "./trace.js";
 export * from "./api.js";

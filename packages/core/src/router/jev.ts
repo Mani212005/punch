@@ -207,6 +207,11 @@ const ROLE_DESCRIPTIONS: Record<SlotRole, string> = {
     "Inventories dependencies, queries vulnerability databases, reads release notes; needs reliable tool calling.",
   executor:
     "Writes the remediation report and, with approval, files the issue; needs precise writing.",
+  inventory: "Lists the repository's dependencies from manifests and lockfiles.",
+  reachability:
+    "Decides whether affected code is reachable in this repository from imports, call sites and entrypoints.",
+  impact: "Assesses what an upgrade could break from release notes, usage and tests.",
+  investigator: "Synthesizes findings into evidence-backed conclusions and recommendations.",
   critic: "Checks every claim against evidence and rejects unsupported or fabricated ones.",
 };
 

@@ -1,14 +1,15 @@
 # Punch - implementation plan
 
-Punch is a multi-agent system that plans, delegates across user-configured models, calls real tools, and keeps going when an agent fails by handing its work to a replacement agent. Everything that does work runs on the user's machine: the engine, the agents, the API keys, the tool calls. A public website on Vercel explains the system, links to GitHub, and shows the orchestration as it happens: which agent holds which role, what the planner produced, what each agent is doing and saying, and, when one fails, the moment another takes over.
+Punch is an AI security investigation system built as a multi-agent system. It does not just report vulnerable dependencies: it investigates whether a vulnerability matters to a given repository, proves or disproves reachability, analyzes what an upgrade would break, tests the fix in an isolated sandbox, challenges its own conclusions with an adversarial critic, and keeps going when an agent fails by handing its work to a replacement agent. It plans, delegates across user-configured models, and calls real tools. Everything that does work runs on the user's machine: the engine, the agents, the API keys, the tool calls. A public website on Vercel explains the system, links to GitHub, and shows the orchestration as it happens: which agent holds which role, what the planner produced, what each agent is doing and saying, and, when one fails, the moment another takes over.
 
-This document is the build contract. Sections 1 to 4 fix the design, section 5 is the ordered work, section 6 is testing, section 7 lists open decisions.
+This document is the single build contract. `docs/investigation.md` is the captain's addendum it implements (the product positioning and the section-8 report format live there verbatim). Sections 1 to 4 fix the design, section 5 is the ordered work, section 6 is testing, section 7 lists decisions, and section 8 specifies the investigation system (reachability, upgrade impact, sandbox, adversarial critic, evidence ledger, report).
 
 ## 0. Assumptions and constraints
 
 - **Language: TypeScript on Node 20+ (ESM), pnpm workspace monorepo.** Engine is a Node server plus CLI. Website is Next.js on Vercel.
 - **Local engine, public window.** The engine runs on the user's machine and holds every secret. The website holds no secrets and does no work; it renders an event stream. During a live demo the site connects to the presenter's engine (browsers allow a public HTTPS page to reach `http://localhost`); afterwards, visitors watch recorded runs replayed from trace files bundled with the site. No hosted database or realtime service is required.
-- **Reference task: dependency security triage for a GitHub repository.** The engine is general, but this is the task we build tools for, test against, and demo, because its APIs are free, public, and fail realistically, and it has a real irreversible action (filing an issue).
+- **Reference task: security investigation of a GitHub repository's dependencies.** The engine is general, but this is the task we build tools for, test against, and demo. The question it answers is: does this vulnerability actually matter to this repository, can we prove it, what will break if we fix it, and can we safely validate the fix? Its APIs are free, public, and fail realistically, and it has real irreversible actions (filing an issue, opening a PR) that stay behind human approval. Dependency scanning is one input, never the product.
+- **The demo story:** find a vulnerability, investigate reachability, the critic rejects weak evidence, the planner replans, an agent crashes, a backup takes over, the vulnerability is determined relevant, an upgrade is proposed, the sandbox test passes, a human approves, a GitHub issue or PR is filed. Everything in this plan is optimized for that sequence.
 - **Model identifiers are user-entered.** The config carries whatever model strings the user's providers accept, validated by a test call. Examples use `claude-opus-5` and `claude-opus-5-5` because you named them.
 - **Jev (`jev-latest`, currently `jev-1.13.0`) decides, code acts.** Jev returns typed answers with probabilities and confidence; thresholds and policy live in code and config.
 - **Design system: Bauhaus + Bento + Utilitarian, saved under `design/`.** `design/DESIGN.md` is the visual contract, `design/tokens.css` the values, `design/components.css` the reference implementation, `design/mockups.html` the rendered landing, watch board, and console. Every UI step below builds to that contract.
@@ -17,17 +18,28 @@ This document is the build contract. Sections 1 to 4 fix the design, section 5 i
 ## 1. The reference task and the roles
 
 **Input:** a GitHub repository URL and an optional budget.
-**Output:** a prioritized remediation report: vulnerable dependencies, fixed versions, breaking-change risk of each upgrade, recommended action. With human approval, filed as a GitHub issue.
+**Output:** a security investigation report (section 8 format, `docs/investigation.md` section 8): dependencies analyzed, known vulnerabilities, how many were investigated, how many are relevant or reachable, how many were validated as actionable, how many need human review, then per finding: reachability with evidence, upgrade and impact, sandbox validation, critic verdict, and a recommended action. With human approval, filed as a GitHub issue or fix PR.
 
-| Role | Responsibility | Tools | Must survive |
-| --- | --- | --- | --- |
-| Orchestrator | Talks to the user, writes the task brief, consults Jev, launches the run, narrates it, relays approvals | `consult_router`, `start_run`, `get_run_status`, `answer_approval` | Its own model failing mid-run (the run is code and continues; narration is taken over) |
-| Planner | Decomposes the brief into a subtask DAG with role hints | none (structured output) | Invalid DAG, replan after a permanent failure |
-| Researcher | Inventories dependencies, queries vulnerabilities, reads release notes | GitHub contents / releases / compare, OSV query and querybatch, npm registry, GitHub Advisory GraphQL fallback | 404s, OSV 5xx, empty results, rate limits, its own provider dying |
-| Executor | Writes the report; with approval, files the issue | blackboard read, `github_create_issue` (irreversible) | Degraded inputs, approval denied, its own provider dying |
-| Critic | Checks every claim against evidence and can reject | blackboard and trace read only | Fabricated versions, unsupported claims |
+Pipeline: orchestrator, planner, then inventory, vulnerability research, reachability and upgrade impact (parallel where the DAG allows), the security investigator, the adversarial critic, candidate remediation, the isolated validation sandbox, human approval, then the executor.
 
-Each role is a **slot** filled by a configured agent. The same model may fill several slots; the distinct-critic rule keeps the critic apart from the executor. Slots are what make takeover possible: when the agent in a slot fails, the slot stays, the agent changes.
+| Role | Responsibility | Tools | Why it exists (one line, per addendum section 14) | Must survive |
+| --- | --- | --- | --- | --- |
+| Orchestrator | Talks to the user, writes the task brief, consults Jev, launches the run, narrates it, relays approvals | `consult_router`, `start_run`, `get_run_status`, `answer_approval` | The only role that faces the user; without it there is no task brief, routing consult or approval relay | Its own model failing mid-run (the run is code and continues; narration is taken over) |
+| Planner | Decomposes the brief into a subtask DAG with role hints, and creates targeted new tasks when the critic rejects | none (structured output) | Turns an open question into an ordered, replannable investigation instead of a fixed script | Invalid DAG, replan after a permanent failure or a critic rejection |
+| Inventory (`inventory`) | Lists the repository's dependencies (manifests, lockfiles, dependency graph) | GitHub contents, repo source tools | Gives every later step a checked list of what is actually installed, so "package present" is evidence and not assumption | 404s, missing lockfile, rate limits, its own provider dying |
+| Vulnerability research (`researcher`) | Queries advisories per dependency, finds patched versions, reads release notes | OSV query and querybatch, npm registry, GitHub Advisory GraphQL fallback, GitHub releases/compare | Sources the vulnerability facts from independent databases so claims can cross-check each other | OSV 5xx, empty results, rate limits, its own provider dying |
+| Reachability (`reachability`) | Decides exists vs exposed vs exploitable: imports, call sites of affected symbols, entrypoints and routes, tests | repo source tools and JS/TS static analysis (E1) | The core differentiator: answers whether the affected code can actually run in this repository | Truncated or huge repos, unparseable files, timeout, its own provider dying |
+| Upgrade impact (`impact`) | Assesses what an upgrade could break as LOW/MEDIUM/HIGH with detected risks and unknowns | GitHub releases/compare, npm registry, repo source tools | Separates "is there a fix" from "is the fix safe", using release notes and real usage instead of a guessed percentage | Missing changelog, private registries, its own provider dying |
+| Security investigator (`investigator`) | Synthesizes the four evidence streams into one finding per vulnerability with claims tied to evidence and a recommended action | blackboard and ledger read, no external tools | Someone has to reconcile conflicting evidence into a single accountable conclusion the critic can attack | Contradicting inputs, degraded inputs, its own provider dying |
+| Adversarial critic (`critic`) | Tries to prove each finding wrong with the ten challenges; rejects with a requested new task | blackboard, ledger and trace read only | Independent verification is what makes the output trustworthy; it is the only role allowed to send work back | Fabricated versions, unsupported claims, hallucinated evidence |
+| Validator (code, not a slot) | Installs, builds and tests the candidate upgrade in an isolated sandbox against a baseline (section 8.4) | Docker or opted-in host runner | Runs the real commands; a model here would only be an opinion, and the point is measured evidence. Deliberately not an LLM slot | Install failure, no test script, timeouts, no isolation available |
+| Executor (`executor`) | Renders and posts the report; with approval, files the issue or opens the fix PR | blackboard read, `github_create_issue`, PR tool (E6) (irreversible) | The only role that acts outside the program, and only after human approval | Degraded inputs, approval denied, its own provider dying |
+
+The validator is a code-driven step, not a configurable agent slot. It authors `sandbox_run` evidence and `sandbox` claims, and the trace names it as role `validator`. It never appears in config, routing, or standby lists.
+
+Each LLM role is a **slot** filled by a configured agent, and every slot carries a **primary model plus two backup models** (the standby list, 2.1, capped at the user's fallback chain and Jev's ranking). The same model may fill several slots; the distinct-critic rule keeps the critic apart from the investigator and executor. Slots are what make takeover possible: when the agent in a slot fails, the slot stays, the agent changes. We do not add agents for their own sake: each role above is justified by a distinct evidence stream, tool set, or failure mode.
+
+Role migration note: the `researcher` role is kept and now means vulnerability research; existing configs, routing and traces stay valid. `inventory`, `reachability`, `impact` and `investigator` are new values in `Role` and `SlotRole` (`packages/shared/src/common.ts`).
 
 ## 2. Agent failure and takeover
 
@@ -65,6 +77,9 @@ Every role slot in a run moves through these states, and every transition is a t
 | Result fails schema twice | engine | `failed` (non-transient) |
 | Critic rejections at cap | critic loop | `rejected` |
 | Provider health check fails before start | adapter `test()` | `failed` before start |
+| Timeout | slot supervisor wall-clock cap per attempt | `failed` (reason `timeout`, non-transient after one nudge); distinct from heartbeat silence because the agent may still be emitting events but never finishing |
+| Hallucinated claim | critic / claim verification (evidence check, plus the Jev pre-check) | claim marked `refuted` or `unsupported`; the finding is rejected and, at the rejection cap, the slot is `rejected` and replaced |
+| Rate limit (429 from a model provider) | adapter | `transient` with `Retry-After`; after retries it is a provider-level failure recorded in `providerHealth`, so same-provider standbys are skipped |
 | Operator kills the agent | UI Kill button or `punch kill <run> <slot>` | `failed` with reason `operator_kill`; this is the demo lever |
 
 ### 2.3 Replacement selection
@@ -89,10 +104,14 @@ Handoff = {
   inputs: Record<string, BlackboardEntry>,       // the same keys the predecessor had
   cachedToolResults: ToolResultSummary[],        // every successful tool call the predecessor made in this subtask
   partialNotes: string | null,                   // the predecessor's last assistant text, if any
+  filesInspected: string[],                      // repo files the predecessor already read
+  evidenceRecords: EvidenceRecord[],             // evidence the predecessor recorded in this subtask
   criticFindings: Finding[] | null,              // when reason is "rejected"
   budget: { stepsRemaining, usdRemaining, msRemaining }
 }
 ```
+
+The replacement therefore receives the original task, the planner context (the subtask and its inputs), the previous agent's output (`partialNotes`), the fetched evidence (`evidenceRecords`), every tool result (`cachedToolResults`), the files already inspected (`filesInspected`), the current state (budget and blackboard inputs) and the failure reason. It must not restart the investigation. The takeover banner reports what was recovered, for example "14 files, 3 API responses, 2 evidence records", and the recovery time.
 
 Tool results are cached per run keyed by a hash of tool name and normalized input, so the replacement's identical calls return instantly from cache and are traced as `tool.result` with `cached: true`. This is what makes the takeover cheap and what the UI shows as "resumed with N cached results".
 
@@ -107,7 +126,8 @@ Tool results are cached per run keyed by a hash of tool name and normalized inpu
 ### 2.6 How to trigger it in a demo
 
 - **Kill button** on the running agent card, or `punch kill <runId> <slot>`. Deterministic and instant; the recommended stage lever.
-- **Chaos profiles**: `provider-down:<providerId>` (every call to that provider fails with 503), `stall:<role>` (the adapter stops yielding events), `garbage:<role>` (returns schema-invalid results), `kill-after:<role>:<n>` (the agent dies after n turns). Chaos is set per run from the console or the CLI.
+- **Chaos profiles**: `provider-down:<providerId>` (every call to that provider fails with 503), `stall:<role>` (the adapter stops yielding events), `garbage:<role>` (returns schema-invalid results), `kill-after:<role>:<n>` (the agent dies after n turns), `timeout:<role>` (the agent keeps emitting but never finishes), `hallucinate:<role>` (returns a claim citing nonexistent evidence), `rate-limit:<providerId>` (every call to that provider returns 429). Chaos is set per run from the console or the CLI.
+- **Failure-mode coverage:** the takeover tests exercise all eight modes: crash, timeout, malformed output, hallucinated claim, tool failure, rate limit, critic rejection, and manual kill (section 6).
 - **Real failure**: revoke or unset a provider key before the run, or stop a CLI's login. Works, but slower to set up on stage.
 
 ### 2.7 Limits and honesty
@@ -152,7 +172,10 @@ punch/
       orchestrator/   session.ts, tools.ts
       router/         jev.ts, policy.ts, standby.ts, classify-error.ts
       planner.ts
-      roles/          researcher.ts, executor.ts, critic.ts
+      roles/          inventory.ts, researcher.ts, reachability.ts, impact.ts, investigator.ts, critic.ts, executor.ts
+      analysis/       source-fetch.ts, import-graph.ts, call-sites.ts, entrypoints.ts, test-map.ts (E1)
+      ledger/         claims.ts, evidence.ts, report.ts (E4)
+      sandbox/        docker.ts, runner.ts, compare.ts (E5)
       slots/          supervisor.ts (state machine, heartbeat, detection), handoff.ts, replacement.ts
       adapters/       agent.ts, anthropic.ts, gemini.ts, openai-compat.ts, cli/{claude-code,opencode,antigravity,grok-cli}.ts
       tools/          registry.ts, http.ts, cache.ts, chaos.ts, github.ts, osv.ts, npm.ts, gh-advisory.ts
@@ -174,6 +197,7 @@ Config = {
   providers: Provider[],
   agents: AgentEntry[],
   policy: {
+    // every role has a primary and up to two backups, expressed through pins + fallbackChains
     pins: { role: Role, agentId: string }[],
     fallbackChains: { role: Role, agentIds: string[] }[],
     rules: { difficulty: "simple"|"moderate"|"hard", role: Role, agentId: string }[],
@@ -190,7 +214,7 @@ Provider =
   | { id, kind: "anthropic"|"gemini"|"xai"|"openai-compatible", baseUrl?, apiKeyEnv: string }
   | { id, kind: "claude-code"|"opencode"|"antigravity"|"grok-cli", binary?: string }
 AgentEntry = { id, displayName, providerId, model, costTier: "low"|"medium"|"high", roles: Role[], strengths: string, pricing? }
-Role = "orchestrator"|"planner"|"researcher"|"executor"|"critic"
+Role = "orchestrator"|"planner"|"inventory"|"researcher"|"reachability"|"impact"|"investigator"|"critic"|"executor"
 ```
 
 Secrets are referenced by environment variable name only. `punch config validate` and `punch config test` (one minimal call per agent, one check per CLI) are the first things a new user runs. A console form over this schema exists but is a later step; editing the file is the primary path.
@@ -250,7 +274,7 @@ Two further Jev uses: **error classification** (3.6) and **critic pre-check** (o
 - **Approval**: irreversible tools pause the run with `approval.requested` and the exact payload; the console modal or `punch approve|deny` answers; no auto-approve flag; `--unattended` auto-denies.
 - **Budgets**: `maxSteps`, `maxUsd` from measured usage and per-agent pricing (CLI agents: steps and time only, labeled "cost not metered"), `maxWallClockMs`; abort via `AbortSignal`; one wrap-up executor turn on a reserved slice.
 - **Blackboard**: typed, evidence-linked, never overwritten, snapshot per write.
-- **Trace** `runs/<id>/trace.jsonl`, append-only. Event kinds: `run.started`, `route.decided`, `route.skipped`, `plan.created`, `slot.assigned`, `agent.started`, `agent.heartbeat` (sampled), `agent.text`, `agent.opaque_output`, `tool.called`, `tool.result` (with `cached`), `tool.retry`, `fallback.used`, `blackboard.written`, `slot.stalled`, `slot.failed`, `slot.rejected`, `slot.replacing` (handoff summary, selection provenance), `slot.replaced`, `slot.exhausted`, `critic.verdict`, `approval.requested|granted|denied`, `budget.checked`, `replan.triggered`, `compensation.ran`, `run.finished`.
+- **Trace** `runs/<id>/trace.jsonl`, append-only. Event kinds: `run.started`, `route.decided`, `route.skipped`, `plan.created`, `slot.assigned`, `agent.started`, `agent.heartbeat` (sampled), `agent.text`, `agent.opaque_output`, `tool.called`, `tool.result` (with `cached`), `tool.retry`, `fallback.used`, `blackboard.written`, `slot.stalled`, `slot.failed`, `slot.rejected`, `slot.replacing` (handoff summary, selection provenance), `slot.replaced`, `slot.exhausted`, `critic.verdict`, `claim.recorded`, `claim.verified`, `claim.refuted`, `evidence.recorded`, `sandbox.started`, `sandbox.step`, `sandbox.finished`, `remediation.proposed`, `approval.requested|granted|denied`, `budget.checked`, `replan.triggered`, `compensation.ran`, `run.finished`.
 
 ### 3.8 Engine API
 
@@ -276,7 +300,7 @@ Public, static-first, no secrets, deployed on Vercel from `apps/web`. Visual des
 
 ### 4.1 Landing (`/`)
 
-- Hero: one sentence on what Punch does, a Watch button that opens a replay of the recorded takeover run, and a GitHub button.
+- Hero: one sentence on the investigation pitch (addendum section 15: Punch investigates whether a vulnerability affects your application, validates fixes in isolation, challenges its own conclusions and recovers when an agent fails; the page must not read like a dependency scanner), a Watch button that opens a replay of the recorded takeover run, and a GitHub button.
 - How it works: the architecture diagram from section 3, animated in three steps (plan, delegate, recover).
 - Features, each mapped to a spec requirement and each linking to the moment in a recorded trace that proves it: planning and delegation, real tools with real failure handling, agent takeover, audit trail, budgets and stopping, human approval.
 - Run it locally: install, `punch config test`, `punch serve`, open `/console`.
@@ -291,7 +315,7 @@ The orchestration board. Same components for live and replay; the only differenc
 - **Routing card**: per-role probability bars, confidence, and provenance (pin, rule, Jev, chain, standby, fresh routing).
 - **Agent logs**: per-agent tabs streaming text, tool calls with status, latency, retry count, fallback used, cached flag; opaque output for CLI agents.
 - **Takeover banner** as in 2.5.
-- **Approval, budget meter, critic verdicts, final report** panels.
+- **Approval, budget meter, critic verdicts, final report** panels, plus the investigation views (E8): the security investigation report, the evidence ledger (claim, author, evidence, tools, verifier, status), the sandbox validation view (baseline vs candidate, failure diff, isolation mode) and the approval view showing the proposed action with validation and risk.
 - **Timeline**: Gantt of agents and tool calls; in replay, a scrubber with 1x / 4x / step controls.
 - **Replay picker**: the committed traces (clean auto run, manual run on a different agent mix, chaos with tool fallbacks, agent takeover, denied approval), plus "load a trace file" for any local run.
 
@@ -343,15 +367,32 @@ Ordered so the engine works end to end first, takeover lands before any UI, and 
 - **D2** README and demo script: clean auto run, then kill the researcher live and narrate the takeover, then a manual run on a different agent mix, then a denied approval. The live approval test files one issue on `https://github.com/Mani212005/punch`. Rehearse with the CLI as the fallback control surface.
 - **D3** Stretch: PR instead of issue with compensation; config form in the console; Docker image for a remote engine.
 
+### Phase E - Security investigation (addendum, `docs/investigation.md`)
+
+Builds on phase A/B, the A8 run loop and the E0 contract (shared schemas in `packages/shared/src/investigation.ts`). E1 to E8 are core; E9 is stretch. Each is one PR.
+
+- **E1 Repo source tools and JS/TS static analysis.** Tools for fetching repository source (GitHub contents/tarball into a per-run read-only workdir), plus static analysis: import graph, call-site search for affected symbols, entrypoints and routes, and test mapping. Each result is recordable as an `EvidenceRecord` (`file`, `static_search`, `dependency_graph`). Done when, against a recorded fixture repo, the tools find a known call site, prove an unimported package unused, list the routes and entrypoints, and map a symbol to its tests, with size and timeout limits enforced and truncated results marked as such.
+- **E2 Investigation roles and the planner's investigation DAG template.** Implement inventory, vulnerability research, reachability, upgrade impact and investigator role definitions (prompts, tool sets, result schemas producing claims and evidence), extend the router's routed roles to the new slots, and teach the planner the investigation DAG template (inventory and research in parallel, then reachability and impact per finding, then investigator, then critic, remediation, validation). Done when, on fixtures, the planner emits a valid investigation DAG and each role produces schema-valid output whose claims cite recorded evidence.
+- **E3 Adversarial critic with the ten challenges and reject-to-replan.** The critic runs the ten challenges (`CRITIC_CHALLENGE_IDS`) per finding, returns a `CriticVerdict`, and on rejection the run loop makes the planner create the targeted new task named in `newTask`, then re-critiques. Done when a fixture with an unsupported reachability claim is rejected, a Reachability task is created and completed, and the second critique accepts; the trace shows `critic.verdict` (rejected), `replan.triggered`, then `critic.verdict` (accepted); the rejection cap still escalates to slot `rejected` and takeover.
+- **E4 Evidence ledger and section-8 report renderer.** Claims and evidence persisted as blackboard entries and trace events (`claim.*`, `evidence.recorded`), a ledger view answering who claimed, on what evidence, via which tools, who verified, and why accepted, and a renderer for the `InvestigationReport` in the exact section-8 text format (Markdown and JSON). Done when a recorded run renders a report whose counts match the findings, every accepted finding links to verified claims with evidence, and a golden-file test pins the text format.
+- **E5 Validation sandbox.** The code-driven validator: create a throwaway copy of the repo, run baseline install/build/test, apply the dependency upgrade, run candidate install/build/test, compare failures, and emit `sandbox.*` events and a `SandboxValidation` plus `sandbox_run` evidence, under the isolation rules in section 7 decision 2. Done when, on fixture repos, a passing upgrade yields PASS, a breaking upgrade yields FAIL with the failing tests named, with no Docker it yields NOT_RUN (no isolation available) and executes nothing on the host, `--sandbox=host` runs on the host and records the opt-in in the trace, and the CPU/memory/time caps and network-only-for-install rule are enforced (Docker integration tests are opt-in when Docker is absent from CI).
+- **E6 Approval-gated issue and fix-PR executor.** Executor produces the proposed action (`remediation.proposed`), shows validation, tests and risk, and only after approval files the issue or opens the fix PR on a branch (reusing the A10 gate and the compensation registry); FAIL or NOT_RUN validation never auto-recommends remediation. Done when denial performs no GitHub write, approval creates the issue or PR exactly once against a mocked GitHub, and a failed validation yields "human review required".
+- **E7 Resilience metrics bench.** Bench over N investigations with injected failures across all eight modes, reporting task completion rate, agent failure rate, takeover success rate and latency, evidence preservation (context lost), critic rejection rate, tool failure recovery, total latency and cost, and human approval rate (addendum section 11). Done when the bench prints the addendum's example-style summary from fixtures and asserts evidence preservation is 100% across takeovers.
+- **E8 Website report, ledger, sandbox and approval views plus landing repositioning.** Web reducer and components for the investigation report, evidence ledger, sandbox validation and approval views on the watch board, and landing copy and visuals repositioned to the investigation pitch and demo story (addendum section 15), all to `design/DESIGN.md`. Done when a committed trace containing claims, sandbox events and a takeover renders those views with no engine, and the landing no longer reads as a dependency scanner.
+- **E9 Supply-chain anomaly signals (stretch).** Signals for suspicious install scripts, new or changed maintainers, unexpected dependency additions, unusual release changes and provenance/integrity data, reported beside CVE findings. Done when fixtures with each signal are flagged and clean packages are not. Must not delay E1 to E8.
+
+Updated demo script for D2 (replaces the old first two beats): GitHub URL, vulnerability found, reachability investigated, critic rejects weak evidence, replan, reachability agent crashes and a backup takes over, vulnerability determined relevant, upgrade proposed, sandbox passes, human approves, issue or PR.
+
 ## 6. Testing
 
 - **Unit** (no network): tools, cache, router policy and standby derivation, slot state machine (every transition, timers under fake clocks), handoff builder, budget, blackboard, config, trace round-trip, adapter loops with mocked clients.
 - **Fixture integration** (no network): whole runs from recorded responses, assertions on trace events.
-- **Chaos and takeover integration**: every profile in 2.6; assert the exact slot event sequence, cached-result reuse, provider exclusion, exhaustion, and completion.
+- **Chaos and takeover integration**: every profile in 2.6; assert the exact slot event sequence, cached-result reuse, provider exclusion, exhaustion, and completion. All eight failure modes (crash, timeout, malformed output, hallucinated claim, tool failure, rate limit, critic rejection, manual kill) each get a test that also asserts the replacement received `filesInspected`, `evidenceRecords` and cached tool results and did not redo them.
+- **Investigation**: static-analysis tools against a recorded fixture repo (call sites, unused imports, routes, test mapping); reachability, impact and critic outcomes on fixtures; report golden files; ledger completeness (every accepted claim has evidence and a verifier); sandbox runner against fixture repos with a fake or real Docker, the no-isolation refusal, and the host opt-in trace record.
 - **HTTP integration**: full run and a kill through the API.
 - **Web**: reducer tests (events in, board state out, including takeover), component tests for card states and the banner, one Playwright flow: pair, run, kill, watch takeover, deny approval.
 - **Live smoke** (opt-in, spends money): one planner call, one Jev routing, one run per configured adapter, one cross-provider takeover, one denial.
-- **Bench**: measurement for the README, including completion rate under the takeover chaos profile.
+- **Bench**: resilience metrics (E7) and measurement for the README, including completion rate under the takeover chaos profile.
 
 ## 7. Decisions recorded (2026-09-26)
 
@@ -361,8 +402,54 @@ All seven were answered in the Lavish review and the plan above reflects them.
 2. **Live viewing:** judges watch live from their own devices, so the viewer token and quick tunnel are phase C (step C1b), not stretch.
 3. **Providers, in build order:** Anthropic API, Google Gemini API (free tier), Claude Code CLI, OpenCode CLI (free), Antigravity CLI. No xAI or Grok CLI subscription; the OpenAI-compatible adapter and Grok CLI adapter wait until a key exists.
 4. **Takeover defaults:** 2 replacements per slot, 45 second API stall, 120 second CLI stall.
-5. **Reference task:** dependency security triage.
+5. **Reference task:** dependency security triage (superseded by decision 8: security investigation).
 6. **Jev's remit:** role and subtask routing, standby lists, error classification, and critic pre-check.
 7. **Demo repo for the live approval test:** `https://github.com/Mani212005/punch`.
 
-The plan is approved as written. Next action, when the captain gives the word: brief a worker on phase A, starting at A0.
+### Addendum decisions (2026-09-26)
+
+The captain's addendum (`docs/investigation.md`) is adopted as part of the contract. Where it and sections 1 to 6 differ, the addendum wins.
+
+8. **Reposition as a security investigation system.** Punch is not a dependency scanner. The reference task is the investigation described in section 1 and section 8; the role table, report, landing and demo story follow it. Roles are: orchestrator, planner, inventory, vulnerability research (`researcher`), reachability, upgrade impact, security investigator, adversarial critic, validator (code, not an LLM slot), executor. Each role carries a one-line justification in section 1; no role exists for its own sake. Takeover (section 2) stays the core infrastructure feature and now also covers timeout, hallucinated claim and rate limit.
+9. **Sandbox isolation (the sandbox runs untrusted repository code).** Install, build and test run inside a disposable Docker container when Docker is available: network allowed only for the install step, a CPU, memory and time cap, and the repo mounted from a throwaway copy. Without Docker the sandbox refuses to run and validation is recorded as "not run (no isolation available)" (`verdict: NOT_RUN`, `isolation: "none"`); nothing executes on the host. The only exception is an explicit `--sandbox=host` opt-in from the user, which is recorded in the trace (`sandbox.started` with `isolation: "host"`).
+10. **Evidence-first outputs.** No invented probabilities: upgrade impact is LOW/MEDIUM/HIGH with evidence, detected risks and unknowns. Every claim in the report is a ledger `Claim` with author, evidence, verifier and status. The report format is the addendum's section 8.
+11. **Human approval** gates issues, PRs, file changes and remediation, as in 3.7; a failed or not-run validation never produces an automatic remediation recommendation.
+12. **Supply-chain anomaly detection (E9) is stretch only** and never blocks E1 to E8.
+
+## 8. Security investigation system
+
+This section specifies what the investigation roles produce. The shapes are the Zod schemas in `packages/shared/src/investigation.ts`; the report format is `docs/investigation.md` section 8.
+
+### 8.1 Reachability (three levels)
+
+Reachability distinguishes three facts that must never be conflated: the vulnerability **exists** in a dependency present in the repository, the application is **exposed** (the affected functionality can be reached from externally driven code: routes, entrypoints, exported API), and the vulnerability is **exploitable** in this repository. The reachability agent inspects the dependency graph, imports, source usage, affected functions and APIs from the advisory, call sites, routes and endpoints, configuration, application entrypoints and tests. Output is `Reachability`: verdict `REACHABLE | NOT_REACHABLE | UNKNOWN`, the three levels each `yes | no | unknown`, the affected symbols, and the claims backing it. `NOT_REACHABLE` requires evidence of absence (a completed static search or import-graph result recorded as evidence); if the analysis could not run, the verdict is `UNKNOWN`, never `NOT_REACHABLE`. Advisories without symbol data yield `UNKNOWN` for exploitability with the reason recorded.
+
+### 8.2 Upgrade impact
+
+The impact agent compares current and patched versions (semver change, release notes, changelog, deprecated and removed APIs), then checks them against repository usage, lockfile changes, dependency tree, tests and CI configuration. Output is `UpgradeImpact`: `LOW | MEDIUM | HIGH`, detected risks and unknowns, each tied to claims. Numeric probabilities such as "87% safe" are forbidden unless a methodology exists.
+
+### 8.3 Findings
+
+The investigator merges the streams into one `InvestigationFinding` per vulnerability: dependency, version, advisory ids, severity, reachability, upgrade from and to, upgrade impact, sandbox validation, critic verdict and recommended action (`UPGRADE | MITIGATE | NO_ACTION | HUMAN_REVIEW | MONITOR`). Recommendation rules: unreachable and low severity can be `NO_ACTION` or `MONITOR` with the evidence stated; reachable plus validated sandbox PASS is `UPGRADE`; sandbox FAIL or NOT_RUN, HIGH impact, or `UNKNOWN` reachability on a high severity is `HUMAN_REVIEW`.
+
+### 8.4 Validation sandbox
+
+The validator (code) follows: temporary workspace from a throwaway copy, baseline install, build and test, apply the candidate upgrade, candidate install, build and test, compare failures (new and fixed), and emit `sandbox.started`, `sandbox.step` per phase and step, and `sandbox.finished` carrying a `SandboxValidation` with baseline and candidate results, test counts, failure diff, isolation mode and verdict `PASS | FAIL | NOT_RUN`. Isolation follows decision 9. Each run is recorded as `sandbox_run` evidence. On FAIL the report says "human review required" and no automatic remediation is offered.
+
+### 8.5 Adversarial critic and reject-to-replan
+
+For every finding the critic tries to prove the investigation wrong with ten challenges, in this order: does the vulnerability apply, is the package present, is the affected functionality used, is the affected code reachable, is the patched version real, is the upgrade compatible, did another source contradict the finding, is the evidence current, is there a safer mitigation, did the investigator make an unsupported assumption. Each is a `CriticChallengeResult` (`survived | failed | not_applicable`, with reasoning and evidence ids). The Jev critic pre-check (3.5) screens claims first. A `REJECTED` verdict must carry the reason, the missing evidence and a `newTask` (role, title, description, claims): the run loop hands this to the planner, which creates that targeted task (for example a Reachability task after "no call-site analysis was performed"), and the finding is critiqued again. The rejection cap (A7) still applies: repeated rejection of the same slot is the `rejected` failure kind and triggers takeover with a higher cost tier.
+
+### 8.6 Evidence ledger
+
+Every important conclusion is a `Claim` (text, kind, subject finding, author, evidence refs, status `proposed | verified | refuted | unsupported`, verifier) pointing at `EvidenceRecord`s (kind `file | tool_result | api_response | static_search | dependency_graph | sandbox_run`, ref, excerpt, fetchedAt). Claims and evidence are appended to the trace (`claim.recorded`, `claim.verified`, `claim.refuted`, `evidence.recorded`) and stored on the blackboard. A human reading the report can answer: who made the claim, what evidence they used, which tools were called, who verified it, and why it was accepted. Handoffs carry `filesInspected` and `evidenceRecords` so takeover never loses evidence.
+
+### 8.7 Report and remediation
+
+The `InvestigationReport` is the section-8 summary (repository, dependencies analyzed, known vulnerabilities, investigated, relevant or reachable, validated as actionable, requires human review) followed by findings, with the ledger attached. It is rendered as Markdown and JSON and shown on the watch board. `remediation.proposed` records the proposed issue or PR before the approval request, showing the upgrade, validation result, test counts, risk and evidence; only after approval does the executor act.
+
+### 8.8 Resilience metrics
+
+Reported by the E7 bench and shown in the README: task completion rate, agent failure rate, takeover success rate and latency, evidence preservation, critic rejection rate, tool failure recovery, total latency and cost, human approval rate.
+
+Next action: the captain launches E1 to E9 in parallel as far as their dependencies allow (E1 first, then E2 to E5, E6 to E8 after).
