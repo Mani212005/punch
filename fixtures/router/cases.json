@@ -1,0 +1,634 @@
+{
+  "note": "20 labeled router cases. `jev` is a compact spec expanded into the documented /v1/systemone response shape by cases.test.ts (score = probability-weighted level, choice = argmax).",
+  "cases": [
+    {
+      "name": "01 jev decides when nothing is pinned or ruled",
+      "kind": "route",
+      "mode": "auto",
+      "jev": {
+        "difficulty": [
+          0.8,
+          0.15,
+          0.05
+        ],
+        "conf": 0.9,
+        "roles": {
+          "planner": {
+            "opus": 0.7,
+            "sonnet": 0.3
+          },
+          "researcher": {
+            "flash": 0.6,
+            "sonnet": 0.25,
+            "cc": 0.1,
+            "opus": 0.05
+          },
+          "executor": {
+            "opus": 0.8,
+            "sonnet": 0.15,
+            "flash": 0.03,
+            "cc": 0.02
+          },
+          "critic": {
+            "sonnet": 0.5,
+            "flash": 0.3,
+            "opus": 0.2
+          }
+        }
+      },
+      "expect": {
+        "difficulty": "simple",
+        "assign": {
+          "planner": [
+            "opus",
+            "jev"
+          ],
+          "researcher": [
+            "flash",
+            "jev"
+          ],
+          "executor": [
+            "opus",
+            "jev"
+          ],
+          "critic": [
+            "sonnet",
+            "jev"
+          ]
+        },
+        "standby": {
+          "researcher": [
+            "sonnet",
+            "cc",
+            "opus"
+          ],
+          "critic": [
+            "flash"
+          ]
+        },
+        "needsConfirmation": false
+      }
+    },
+    {
+      "name": "02 pin beats rule and Jev",
+      "kind": "route",
+      "mode": "auto",
+      "policy": {
+        "pins": [
+          {
+            "role": "researcher",
+            "agentId": "flash"
+          }
+        ],
+        "rules": [
+          {
+            "difficulty": "hard",
+            "role": "researcher",
+            "agentId": "opus"
+          }
+        ]
+      },
+      "jev": {
+        "difficulty": [
+          0.05,
+          0.15,
+          0.8
+        ],
+        "conf": 0.9,
+        "roles": {
+          "researcher": {
+            "opus": 0.7,
+            "flash": 0.1,
+            "sonnet": 0.1,
+            "cc": 0.1
+          }
+        }
+      },
+      "expect": {
+        "difficulty": "hard",
+        "assign": {
+          "researcher": [
+            "flash",
+            "pin"
+          ]
+        },
+        "standby": {
+          "researcher": [
+            "opus",
+            "sonnet",
+            "cc"
+          ]
+        }
+      },
+      "roles": [
+        "researcher"
+      ]
+    },
+    {
+      "name": "03 rule on difficulty beats Jev choice",
+      "kind": "route",
+      "mode": "auto",
+      "policy": {
+        "rules": [
+          {
+            "difficulty": "hard",
+            "role": "executor",
+            "agentId": "opus"
+          }
+        ]
+      },
+      "jev": {
+        "difficulty": [
+          0.05,
+          0.15,
+          0.8
+        ],
+        "conf": 0.9,
+        "roles": {
+          "executor": {
+            "flash": 0.7,
+            "opus": 0.2,
+            "sonnet": 0.05,
+            "cc": 0.05
+          }
+        }
+      },
+      "expect": {
+        "difficulty": "hard",
+        "assign": {
+          "executor": [
+            "opus",
+            "rule"
+          ]
+        }
+      },
+      "roles": [
+        "executor"
+      ]
+    },
+    {
+      "name": "04 rule for another difficulty is ignored",
+      "kind": "route",
+      "mode": "auto",
+      "policy": {
+        "rules": [
+          {
+            "difficulty": "hard",
+            "role": "executor",
+            "agentId": "opus"
+          }
+        ]
+      },
+      "jev": {
+        "difficulty": [
+          0.1,
+          0.8,
+          0.1
+        ],
+        "conf": 0.9,
+        "roles": {
+          "executor": {
+            "flash": 0.7,
+            "opus": 0.2,
+            "sonnet": 0.05,
+            "cc": 0.05
+          }
+        }
+      },
+      "expect": {
+        "difficulty": "moderate",
+        "assign": {
+          "executor": [
+            "flash",
+            "jev"
+          ]
+        }
+      },
+      "roles": [
+        "executor"
+      ]
+    },
+    {
+      "name": "05 distinctCritic moves the critic off the executor",
+      "kind": "route",
+      "mode": "auto",
+      "jev": {
+        "difficulty": [
+          0.1,
+          0.8,
+          0.1
+        ],
+        "conf": 0.9,
+        "roles": {
+          "executor": {
+            "opus": 0.9,
+            "sonnet": 0.1
+          },
+          "critic": {
+            "opus": 0.7,
+            "sonnet": 0.2,
+            "flash": 0.1
+          }
+        }
+      },
+      "roles": [
+        "executor",
+        "critic"
+      ],
+      "expect": {
+        "assign": {
+          "executor": [
+            "opus",
+            "jev"
+          ],
+          "critic": [
+            "sonnet",
+            "standby"
+          ]
+        },
+        "warnings": 1
+      }
+    },
+    {
+      "name": "06 distinctCritic off allows the same agent",
+      "kind": "route",
+      "mode": "auto",
+      "policy": {
+        "distinctCritic": false
+      },
+      "jev": {
+        "difficulty": [
+          0.1,
+          0.8,
+          0.1
+        ],
+        "conf": 0.9,
+        "roles": {
+          "executor": {
+            "opus": 0.9,
+            "sonnet": 0.1
+          },
+          "critic": {
+            "opus": 0.7,
+            "sonnet": 0.2,
+            "flash": 0.1
+          }
+        }
+      },
+      "roles": [
+        "executor",
+        "critic"
+      ],
+      "expect": {
+        "assign": {
+          "executor": [
+            "opus",
+            "jev"
+          ],
+          "critic": [
+            "opus",
+            "jev"
+          ]
+        },
+        "warnings": 0
+      }
+    },
+    {
+      "name": "07 auto mode pauses below autoConfirmBelowConfidence",
+      "kind": "route",
+      "mode": "auto",
+      "jev": {
+        "difficulty": [
+          0.1,
+          0.8,
+          0.1
+        ],
+        "conf": 0.4,
+        "roles": {
+          "planner": {
+            "opus": 0.45,
+            "sonnet": 0.55
+          }
+        }
+      },
+      "roles": [
+        "planner"
+      ],
+      "expect": {
+        "assign": {
+          "planner": [
+            "sonnet",
+            "jev"
+          ]
+        },
+        "needsConfirmation": true,
+        "lowConfidence": [
+          "planner"
+        ]
+      }
+    },
+    {
+      "name": "08 manual mode never pauses, confidence is display only",
+      "kind": "route",
+      "mode": "manual",
+      "jev": {
+        "difficulty": [
+          0.1,
+          0.8,
+          0.1
+        ],
+        "conf": 0.4,
+        "roles": {
+          "planner": {
+            "opus": 0.45,
+            "sonnet": 0.55
+          }
+        }
+      },
+      "roles": [
+        "planner"
+      ],
+      "expect": {
+        "assign": {
+          "planner": [
+            "sonnet",
+            "jev"
+          ]
+        },
+        "needsConfirmation": false,
+        "confidence": {
+          "planner": 0.4
+        }
+      }
+    },
+    {
+      "name": "09 a pin is not paused for low Jev confidence",
+      "kind": "route",
+      "mode": "auto",
+      "policy": {
+        "pins": [
+          {
+            "role": "planner",
+            "agentId": "opus"
+          }
+        ]
+      },
+      "jev": {
+        "difficulty": [
+          0.1,
+          0.8,
+          0.1
+        ],
+        "conf": 0.3,
+        "roles": {
+          "planner": {
+            "opus": 0.45,
+            "sonnet": 0.55
+          }
+        }
+      },
+      "roles": [
+        "planner"
+      ],
+      "expect": {
+        "assign": {
+          "planner": [
+            "opus",
+            "pin"
+          ]
+        },
+        "needsConfirmation": false,
+        "confidence": {
+          "planner": 1
+        }
+      }
+    },
+    {
+      "name": "10 Jev down: pins decide every role and route.skipped is traced",
+      "kind": "route",
+      "mode": "auto",
+      "policy": {
+        "pins": [
+          {
+            "role": "planner",
+            "agentId": "opus"
+          },
+          {
+            "role": "researcher",
+            "agentId": "flash"
+          }
+        ]
+      },
+      "jevError": {
+        "message": "503 service unavailable",
+        "status": 503
+      },
+      "roles": [
+        "planner",
+        "researcher"
+      ],
+      "expect": {
+        "assign": {
+          "planner": [
+            "opus",
+            "pin"
+          ],
+          "researcher": [
+            "flash",
+            "pin"
+          ]
+        },
+        "skipped": 2
+      }
+    },
+    {
+      "name": "11 Jev down with nothing pinned throws JevUnavailableError",
+      "kind": "route",
+      "mode": "auto",
+      "jevError": {
+        "message": "503 service unavailable",
+        "status": 503
+      },
+      "roles": [
+        "planner"
+      ],
+      "expect": {
+        "throws": "JevUnavailableError"
+      }
+    },
+    {
+      "name": "12 subtask: researcher with high complexity gets high effort",
+      "kind": "subtask",
+      "jev": {
+        "assignee": {
+          "researcher": 0.85,
+          "executor": 0.1,
+          "none_needed": 0.03,
+          "human": 0.02
+        },
+        "complexity": [
+          0.05,
+          0.25,
+          0.7
+        ]
+      },
+      "expect": {
+        "assignee": "researcher",
+        "effort": "high"
+      }
+    },
+    {
+      "name": "13 subtask: executor with low complexity gets low effort",
+      "kind": "subtask",
+      "jev": {
+        "assignee": {
+          "researcher": 0.05,
+          "executor": 0.9,
+          "none_needed": 0.03,
+          "human": 0.02
+        },
+        "complexity": [
+          0.9,
+          0.08,
+          0.02
+        ]
+      },
+      "expect": {
+        "assignee": "executor",
+        "effort": "low"
+      }
+    },
+    {
+      "name": "14 classify: Jev calls a timeout transient",
+      "kind": "classify",
+      "input": {
+        "text": "request to osv.dev timed out after 10000ms"
+      },
+      "jev": {
+        "transient": 0.93,
+        "permanent": 0.03,
+        "malformed": 0.02,
+        "not_found": 0.02
+      },
+      "expect": {
+        "errorClass": "transient",
+        "source": "jev"
+      }
+    },
+    {
+      "name": "15 classify: Jev unavailable, code falls back on 404",
+      "kind": "classify",
+      "input": {
+        "text": "GET /repos/a/b/contents/package.json failed",
+        "status": 404
+      },
+      "jevError": {
+        "message": "connection refused"
+      },
+      "expect": {
+        "errorClass": "not_found",
+        "source": "code"
+      }
+    },
+    {
+      "name": "16 classify: Jev unavailable, code detects malformed JSON",
+      "kind": "classify",
+      "input": {
+        "text": "Unexpected token < in JSON at position 0",
+        "status": 200
+      },
+      "jevError": {
+        "message": "connection refused"
+      },
+      "expect": {
+        "errorClass": "malformed",
+        "source": "code"
+      }
+    },
+    {
+      "name": "17 replacement: chain outranks standby and effort is bumped",
+      "kind": "replace",
+      "input": {
+        "role": "researcher",
+        "failedAgentId": "sonnet",
+        "reason": "failed",
+        "standby": [
+          "cc",
+          "opus"
+        ],
+        "failedEffort": "medium",
+        "chain": [
+          "flash"
+        ]
+      },
+      "expect": {
+        "agentId": "flash",
+        "provenance": "chain",
+        "effort": "high"
+      }
+    },
+    {
+      "name": "18 replacement: provider-level failure skips same-provider standbys",
+      "kind": "replace",
+      "input": {
+        "role": "researcher",
+        "failedAgentId": "sonnet",
+        "reason": "failed",
+        "providerLevelFailure": true,
+        "standby": [
+          "opus",
+          "flash",
+          "cc"
+        ]
+      },
+      "expect": {
+        "agentId": "flash",
+        "provenance": "standby",
+        "rank": 2,
+        "skippedIds": [
+          "opus"
+        ]
+      }
+    },
+    {
+      "name": "19 replacement: rejected picks equal or higher cost tier",
+      "kind": "replace",
+      "input": {
+        "role": "executor",
+        "failedAgentId": "sonnet",
+        "reason": "rejected",
+        "standby": [
+          "flash",
+          "cc",
+          "opus"
+        ]
+      },
+      "expect": {
+        "agentId": "cc",
+        "provenance": "standby",
+        "rank": 2,
+        "skippedIds": [
+          "flash"
+        ]
+      }
+    },
+    {
+      "name": "20 replacement: nothing eligible is exhausted",
+      "kind": "replace",
+      "input": {
+        "role": "planner",
+        "failedAgentId": "opus",
+        "reason": "failed",
+        "standby": [
+          "sonnet"
+        ],
+        "tried": [
+          "sonnet"
+        ]
+      },
+      "expect": {
+        "agentId": null
+      }
+    }
+  ]
+}
