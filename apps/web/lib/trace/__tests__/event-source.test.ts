@@ -45,24 +45,24 @@ describe("Event Source Abstraction and Takeover Trace Verification", () => {
     for (let i = 0; i < parsedEvents.length; i++) {
       const event = parsedEvents[i];
       expect(event.seq).toBe(i);
-      expect(event.runId).toBe("2026-09-26-1418");
+      expect(event.runId).toBe("2026-09-26-takeover");
       expect(event.ts).toBeGreaterThan(0);
     }
 
     // Verify reduced board state from the whole takeover trace
     const finalState = reduceTrace(parsedEvents);
     expect(finalState.run.status).toBe("completed");
-    expect(finalState.run.repoUrl).toBe("https://github.com/acme/webapp");
-    expect(finalState.plan.subtasks.length).toBe(7);
-    expect(finalState.slots.researcher.agentId).toBe("gemini-flash");
+    expect(finalState.run.repoUrl).toBe("https://github.com/expressjs/express");
+    expect(finalState.plan.subtasks.length).toBe(4);
+    expect(finalState.slots.researcher.agentId).toBe("gemini");
     expect(finalState.slots.researcher.replaced).toHaveLength(1);
-    expect(finalState.slots.researcher.replaced[0].agentId).toBe("opus-5");
+    expect(finalState.slots.researcher.replaced[0].agentId).toBe("opus");
     expect(finalState.slots.researcher.replaced[0].reason.kind).toBe("operator_kill");
     expect(finalState.takeover.active).toBeDefined();
     expect(finalState.takeover.active?.status).toBe("replaced");
-    expect(finalState.takeover.active?.handoff.cachedResultCount).toBe(5);
-    expect(finalState.approvals[0].status).toBe("granted");
-    expect(finalState.blackboard["github.issue"]).toBeDefined();
+    expect(finalState.takeover.active?.handoff.cachedResultCount).toBe(2);
+    expect(finalState.approvals).toHaveLength(0);
+    expect(finalState.blackboard["report"]).toBeDefined();
   });
 
   it("StaticFileEventSource fetches and streams events", async () => {

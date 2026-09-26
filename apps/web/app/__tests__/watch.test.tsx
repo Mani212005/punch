@@ -50,13 +50,13 @@ describe("Watch Board Replay Page", () => {
 
       // Wait for events to load and render board state
       await waitFor(() => {
-        expect(screen.getByText("2026-09-26-1418")).toBeInTheDocument();
+        expect(screen.getByText("2026-09-26-takeover")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("https://github.com/acme/webapp")).toBeInTheDocument();
+      expect(screen.getByText("https://github.com/expressjs/express")).toBeInTheDocument();
       expect(screen.getByText(/RESEARCHER slot:/i)).toBeInTheDocument();
-      expect(screen.getByText(/plan graph · 7 subtasks/i)).toBeInTheDocument();
-      expect(screen.getByText(/timeline · event 62 of 62/i)).toBeInTheDocument();
+      expect(screen.getByText(/plan graph · 4 subtasks/i)).toBeInTheDocument();
+      expect(screen.getByText(/timeline · event 90 of 90/i)).toBeInTheDocument();
     } finally {
       global.fetch = originalFetch;
     }
