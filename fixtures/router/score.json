@@ -1,0 +1,24 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "difficulty": {
+      "type": "score",
+      "score": 0.69,
+      "confidence": 0.53,
+      "legend": {
+        "0": "simple: a small, well-specified task; one clear source of data, few dependencies, little judgment.",
+        "1": "moderate: several sources or steps, some judgment about trade-offs, a typical repository.",
+        "2": "hard: many interdependent steps, ambiguous or conflicting evidence, high stakes for errors."
+      },
+      "probabilities": {
+        "0": 0.31,
+        "1": 0.69,
+        "2": 0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 378,
+    "output_tokens": 17
+  }
+}

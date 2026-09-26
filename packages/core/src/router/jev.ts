@@ -71,22 +71,40 @@ export function createTypeSafeTransport(
 
 /** One recorded exchange: the question ids it answers, and either a response or an error. */
 export interface RecordedExchange {
-  questionIds: string[];
+  questionIds?: string[];
   response?: unknown;
   error?: { message: string; status?: number };
 }
 
 /** Replays recorded exchanges, matching on the exact set of question ids. No network. */
-export function createRecordedTransport(exchanges: RecordedExchange[]): JevTransport & {
+export function createRecordedTransport(
+  exchanges: (RecordedExchange | JevResponse | Record<string, unknown>)[],
+): JevTransport & {
   requests: JevRequest[];
 } {
   const requests: JevRequest[] = [];
+  const normalized: RecordedExchange[] = exchanges.map((e) => {
+    if ("questionIds" in e || "error" in e) {
+      const rec = e as RecordedExchange;
+      const questionIds =
+        rec.questionIds ??
+        (rec.response && typeof rec.response === "object" && "answers" in rec.response
+          ? Object.keys((rec.response as { answers: Record<string, unknown> }).answers)
+          : []);
+      return { ...rec, questionIds };
+    }
+    const resp = e as { answers?: Record<string, unknown> };
+    return {
+      questionIds: resp.answers ? Object.keys(resp.answers) : [],
+      response: e,
+    };
+  });
   return {
     requests,
     evaluate(request) {
       requests.push(request);
       const ids = Object.keys(request.questions).sort().join("|");
-      const hit = exchanges.find((e) => [...e.questionIds].sort().join("|") === ids);
+      const hit = normalized.find((e) => [...(e.questionIds ?? [])].sort().join("|") === ids);
       if (!hit) return Promise.reject(new Error(`no recorded Jev exchange for [${ids}]`));
       if (hit.error) {
         return Promise.reject(
@@ -293,9 +311,7 @@ export function createJev(transport: JevTransport): Jev {
         if (candidates.length < 2) continue;
         asked.push(role);
         questions[agentQuestionId(role)] = choice(
-          {
-            question: `Which agent should fill the ${role} role? Weigh each agent's stated strengths, its cost tier, and \`preferences\`. Role: ${ROLE_DESCRIPTIONS[role]}`,
-          },
+          `Which agent should fill the ${role} role? Weigh each agent's stated strengths, its cost tier, and \`preferences\`. Role: ${ROLE_DESCRIPTIONS[role]}`,
           Object.fromEntries(
             candidates.map((a) => [
               a.id,

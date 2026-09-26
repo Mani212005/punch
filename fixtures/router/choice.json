@@ -1,0 +1,20 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "error_class": {
+      "type": "choice",
+      "choice": "not_found",
+      "confidence": 1,
+      "probabilities": {
+        "malformed": 0,
+        "not_found": 1,
+        "transient": 0,
+        "permanent": 0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 459,
+    "output_tokens": 53
+  }
+}

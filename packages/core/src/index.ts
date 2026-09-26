@@ -6,7 +6,10 @@ export * from "./trace/writer.js";
 // Approvals
 export * from "./approval.js";
 
-// Error classification
+// Router
+export * from "./router/jev.js";
+export * from "./router/policy.js";
+export * from "./router/standby.js";
 export * from "./router/classify-error.js";
 
 // Tool Layer

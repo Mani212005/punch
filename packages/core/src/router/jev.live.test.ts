@@ -32,19 +32,65 @@ describe.skipIf(!process.env.TYPESAFE_API_KEY)("Jev live shape", () => {
       budget: { maxSteps: 50, maxUsd: 2, maxWallClockMs: 600_000 },
       roles: ["researcher"],
     });
+
+    // Model is returned as concrete version (e.g. "jev-1.13.0")
+    expect(routing.model).toMatch(/^jev-\d+\.\d+\.\d+/);
+
+    // Score question shape: score, levels, normalized, probabilities, confidence
     expect(routing.difficulty.score).toBeGreaterThanOrEqual(0);
     expect(routing.difficulty.score).toBeLessThanOrEqual(2);
-    expect(["cheap", "deep"]).toContain(routing.roles.researcher?.choice);
+    expect(routing.difficulty.levels).toBe(3);
+    expect(routing.difficulty.normalized).toBeGreaterThanOrEqual(0);
+    expect(routing.difficulty.normalized).toBeLessThanOrEqual(1);
+    expect(routing.difficulty.confidence).toBeGreaterThanOrEqual(0);
+    expect(routing.difficulty.confidence).toBeLessThanOrEqual(1);
+    expect(routing.difficulty.probabilities).toHaveLength(3);
+    const probSum = routing.difficulty.probabilities.reduce((sum, p) => sum + p, 0);
+    expect(probSum).toBeCloseTo(1, 1);
+
+    // Choice question shape: choice, confidence, probabilities sorted descending
+    const researcher = routing.roles.researcher;
+    expect(researcher).toBeDefined();
+    expect(["cheap", "deep"]).toContain(researcher?.choice);
+    expect(researcher!.confidence).toBeGreaterThanOrEqual(0);
+    expect(researcher!.confidence).toBeLessThanOrEqual(1);
+    expect(researcher!.probabilities.length).toBe(2);
+    expect(researcher!.probabilities[0]!.probability).toBeGreaterThanOrEqual(
+      researcher!.probabilities[1]!.probability,
+    );
+
+    // Noul question shape: bare probability in 0..1
+    expect(routing.needsExternalData).toBeGreaterThanOrEqual(0);
+    expect(routing.needsExternalData).toBeLessThanOrEqual(1);
     expect(routing.isSensitive).toBeGreaterThanOrEqual(0);
+    expect(routing.isSensitive).toBeLessThanOrEqual(1);
+  }, 30_000);
+
+  it("routes a subtask", async () => {
+    const subtask = await jev.routeSubtask({
+      subtask: {
+        title: "Check lodash CVEs",
+        description: "Query OSV for vulnerabilities in lodash",
+        roleHint: "researcher",
+      },
+      brief: "Triage dependencies",
+    });
+    expect(subtask.assignee.choice).toBe("researcher");
+    expect(subtask.assignee.confidence).toBeGreaterThanOrEqual(0);
+    expect(subtask.complexity.score).toBeGreaterThanOrEqual(0);
+    expect(subtask.complexity.score).toBeLessThanOrEqual(2);
   }, 30_000);
 
   it("classifies an error and prechecks a claim", async () => {
-    expect((await jev.classifyError({ text: "GET /x returned 404", status: 404 })).errorClass).toBe(
-      "not_found",
-    );
+    const errorResult = await jev.classifyError({ text: "GET /x returned 404", status: 404 });
+    expect(errorResult.errorClass).toBe("not_found");
+    expect(errorResult.confidence).toBeGreaterThanOrEqual(0);
+    expect(errorResult.probabilities.length).toBeGreaterThan(0);
+
     const checked = await jev.precheckClaims([
       { id: "c", claim: "lodash 4.17.21 exists", evidence: "npm registry lists lodash 4.17.21" },
     ]);
     expect(checked.c).toBeGreaterThan(0.5);
+    expect(checked.c).toBeLessThanOrEqual(1);
   }, 30_000);
 });

@@ -48,10 +48,25 @@ function makeConfig(policy: Record<string, unknown> = {}): Config {
   });
 }
 
-const levelAnswer = (probs: number[], conf: number): JevAnswer => ({
+const DIFFICULTY_LEGEND: Record<string, string> = {
+  "0": "simple: a small, well-specified task; one clear source of data, few dependencies, little judgment.",
+  "1": "moderate: several sources or steps, some judgment about trade-offs, a typical repository.",
+  "2": "hard: many interdependent steps, ambiguous or conflicting evidence, high stakes for errors.",
+};
+const COMPLEXITY_LEGEND: Record<string, string> = {
+  "0": "low: a mechanical lookup or transformation with an obvious answer.",
+  "1": "medium: needs some reasoning over several inputs.",
+  "2": "high: needs deep multi-step reasoning, weighing conflicting evidence, or careful synthesis.",
+};
+
+const levelAnswer = (
+  probs: number[],
+  conf: number,
+  legend?: Record<string, string>,
+): JevAnswer => ({
   type: "score",
   score: probs.reduce((sum, p, i) => sum + p * i, 0),
-  legend: Object.fromEntries(probs.map((_, i) => [String(i), `level ${i}`])),
+  legend: legend ?? Object.fromEntries(probs.map((_, i) => [String(i), `level ${i}`])),
   probabilities: Object.fromEntries(probs.map((p, i) => [String(i), p])),
   confidence: conf,
 });
@@ -73,7 +88,7 @@ function exchangeFor(c: Case): RecordedExchange {
   if (c.kind === "route") {
     const conf = jev.conf as number;
     const answers: Record<string, JevAnswer> = {
-      difficulty: levelAnswer(jev.difficulty, conf),
+      difficulty: levelAnswer(jev.difficulty, conf, DIFFICULTY_LEGEND),
       needs_external_data: { type: "noul", noul: 0.9 },
       is_sensitive: { type: "noul", noul: 0.95 },
     };
@@ -86,7 +101,7 @@ function exchangeFor(c: Case): RecordedExchange {
       questionIds: ["assignee", "complexity"],
       response: response({
         assignee: choiceAnswer(jev.assignee, 0.9),
-        complexity: levelAnswer(jev.complexity, 0.8),
+        complexity: levelAnswer(jev.complexity, 0.8, COMPLEXITY_LEGEND),
       }),
     };
   }
@@ -212,4 +227,24 @@ describe("router: 20 labeled cases", () => {
       }
     });
   }
+});
+
+describe("fixtures/router real-shaped responses", () => {
+  it("validates recorded fixtures for noul, score, and choice", () => {
+    const noul = read("noul.json");
+    const score = read("score.json");
+    const choice = read("choice.json");
+
+    expect(noul.model).toMatch(/^jev-/);
+    expect(noul.answers.needs_external_data.type).toBe("noul");
+    expect(typeof noul.answers.needs_external_data.noul).toBe("number");
+
+    expect(score.model).toMatch(/^jev-/);
+    expect(score.answers.difficulty.type).toBe("score");
+    expect(score.answers.difficulty.legend["0"]).toContain("simple");
+
+    expect(choice.model).toMatch(/^jev-/);
+    expect(choice.answers.error_class.type).toBe("choice");
+    expect(choice.answers.error_class.choice).toBe("not_found");
+  });
 });

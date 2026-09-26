@@ -1,0 +1,13 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "needs_external_data": {
+      "type": "noul",
+      "noul": 0.43
+    }
+  },
+  "usage": {
+    "input_tokens": 296,
+    "output_tokens": 22
+  }
+}
