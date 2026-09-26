@@ -7,7 +7,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { TraceEvent } from "@punch/shared";
 import { TraceEvent as TraceEventSchema } from "@punch/shared";
 import { buildDockerRunArgs, DEFAULT_SANDBOX_LIMITS, DockerExecutor } from "./docker.js";
-import { nodeRunner, type ProcessRunner, type RunRequest, type RunResult } from "./runner.js";
+import {
+  nodeRunner,
+  type ProcessRunner,
+  type ProcessRequest,
+  type ProcessResult,
+} from "./runner.js";
 import {
   detectPackageManager,
   detectScripts,
@@ -45,14 +50,14 @@ const basePkg = {
   dependencies: { foo: "^2.1.4" },
 };
 
-const ok = (output = ""): RunResult => ({
+const ok = (output = ""): ProcessResult => ({
   exitCode: 0,
   output,
   timedOut: false,
   aborted: false,
   durationMs: 5,
 });
-const bad = (output = "", exitCode = 1): RunResult => ({
+const bad = (output = "", exitCode = 1): ProcessResult => ({
   exitCode,
   output,
   timedOut: false,
@@ -74,12 +79,16 @@ interface StepCall extends Call {
 
 /** Fake docker and host: `handler` decides each step's result from the phase and shell. */
 function fakeRunner(
-  handler: (step: { shell: string; phase: "baseline" | "candidate"; workdir: string }) => RunResult,
+  handler: (step: {
+    shell: string;
+    phase: "baseline" | "candidate";
+    workdir: string;
+  }) => ProcessResult,
   options: { docker: boolean } = { docker: true },
 ) {
   const calls: Call[] = [];
   const steps: StepCall[] = [];
-  const runner: ProcessRunner = async (req: RunRequest) => {
+  const runner: ProcessRunner = async (req: ProcessRequest) => {
     calls.push({ command: req.command, args: req.args, env: req.env, timeoutMs: req.timeoutMs });
     if (req.command === "docker" && req.args[0] === "info")
       return options.docker ? ok("27.0.1\n") : bad("Cannot connect");

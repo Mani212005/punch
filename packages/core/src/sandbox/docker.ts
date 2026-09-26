@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { ProcessRunner, RunResult } from "./runner.js";
+import type { ProcessRunner, ProcessResult } from "./runner.js";
 
 /** Pinned Node image for every validation. Override per run, never per repo. */
 export const DEFAULT_SANDBOX_IMAGE =
@@ -40,7 +40,7 @@ export interface StepExecRequest {
 /** Runs one step in some isolation. Docker and host are the two implementations. */
 export interface StepExecutor {
   readonly isolation: "docker" | "host";
-  exec(request: StepExecRequest): Promise<RunResult>;
+  exec(request: StepExecRequest): Promise<ProcessResult>;
 }
 
 /** Environment the docker client itself needs on the host; never contains repo or API secrets. */
@@ -159,7 +159,7 @@ export class DockerExecutor implements StepExecutor {
         : undefined);
   }
 
-  async exec(request: StepExecRequest): Promise<RunResult> {
+  async exec(request: StepExecRequest): Promise<ProcessResult> {
     const name = `punch-sbx-${this.nameSuffix()}`;
     const args = buildDockerRunArgs({
       name,
@@ -196,7 +196,7 @@ export class HostExecutor implements StepExecutor {
   readonly isolation = "host" as const;
   constructor(private readonly runner: ProcessRunner) {}
 
-  exec(request: StepExecRequest): Promise<RunResult> {
+  exec(request: StepExecRequest): Promise<ProcessResult> {
     return this.runner({
       command: "sh",
       args: ["-c", request.shell],

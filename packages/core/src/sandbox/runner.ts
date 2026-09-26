@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 
 /** Process runner seam: every sandbox command goes through it so tests can inject a fake. */
-export interface RunRequest {
+export interface ProcessRequest {
   command: string;
   args: string[];
   cwd?: string;
@@ -11,7 +11,7 @@ export interface RunRequest {
   signal?: AbortSignal;
 }
 
-export interface RunResult {
+export interface ProcessResult {
   exitCode: number | null;
   /** Combined stdout and stderr, tail-capped. */
   output: string;
@@ -20,13 +20,13 @@ export interface RunResult {
   durationMs: number;
 }
 
-export type ProcessRunner = (request: RunRequest) => Promise<RunResult>;
+export type ProcessRunner = (request: ProcessRequest) => Promise<ProcessResult>;
 
 const MAX_OUTPUT_CHARS = 1_000_000;
 
 /** Default runner: spawn without a shell, in its own process group so a timeout kills the tree. */
 export const nodeRunner: ProcessRunner = (request) =>
-  new Promise<RunResult>((resolve) => {
+  new Promise<ProcessResult>((resolve) => {
     const started = Date.now();
     let output = "";
     let timedOut = false;
