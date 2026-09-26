@@ -2,6 +2,8 @@
 
 A multi-agent system that plans, delegates across user-configured models, calls real tools, and hands a failed agent's work to a replacement. See [spec.md](spec.md) for the challenge and [plan.md](plan.md) for the build contract. [docs/workflow.md](docs/workflow.md) explains how a run works end to end. Visual design lives in [design/](design/).
 
+**Live site:** https://punch-cyan.vercel.app - replays the recorded takeover run at [/watch/takeover](https://punch-cyan.vercel.app/watch/takeover) with no engine, and drives a local engine (default `http://localhost:4141`) when paired. Deployed on Vercel (project root `apps/web`, Next.js, pnpm); previews per PR, production from `main`.
+
 ## Development
 
 Requires Node 20+ and pnpm 10.
