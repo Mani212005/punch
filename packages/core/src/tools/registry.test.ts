@@ -22,10 +22,13 @@ describe("Tool Registry & Execution Pipeline", () => {
       }
     });
 
-    it("marks only github_create_issue as irreversible", () => {
+    it("marks only the issue and fix-PR tools as irreversible", () => {
       expect(TOOL_SPECS.github_create_issue?.irreversible).toBe(true);
+      expect(TOOL_SPECS.github_open_fix_pr?.irreversible).toBe(true);
 
-      const otherSpecs = getToolSpecs().filter((s) => s.name !== "github_create_issue");
+      const otherSpecs = getToolSpecs().filter(
+        (s) => s.name !== "github_create_issue" && s.name !== "github_open_fix_pr",
+      );
       for (const spec of otherSpecs) {
         expect(spec.irreversible).toBe(false);
       }

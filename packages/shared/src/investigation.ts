@@ -265,3 +265,28 @@ export const InvestigationReport = z.object({
   evidence: z.array(EvidenceRecord).default([]),
 });
 export type InvestigationReport = z.infer<typeof InvestigationReport>;
+
+/** Proposed external action the executor shows before the A10 approval gate (E6). */
+export const RemediationAction = z.enum(["issue", "pull_request"]);
+export type RemediationAction = z.infer<typeof RemediationAction>;
+
+export const RemediationProposal = z.object({
+  findingId: z.string(),
+  action: RemediationAction,
+  dependency: z.string(),
+  from: z.string(),
+  to: z.string().nullable(),
+  /** Exact external action: issue title/body or PR head/base/title/body. */
+  title: z.string(),
+  body: z.string(),
+  /** Validation summary shown beside the approve/deny prompt (docs/investigation.md section 9). */
+  validationSummary: z.string(),
+  validationVerdict: SandboxVerdict,
+  testSummary: z.string(),
+  risk: ImpactLevel,
+  evidenceIds: z.array(z.string()).default([]),
+  criticVerdict: z.enum(["ACCEPTED", "REJECTED", "PENDING"]).default("PENDING"),
+  /** FAIL/NOT_RUN proposals carry this instead of an auto-remediation recommendation. */
+  humanReviewRequired: z.boolean().default(false),
+});
+export type RemediationProposal = z.infer<typeof RemediationProposal>;

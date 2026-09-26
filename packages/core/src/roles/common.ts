@@ -278,7 +278,7 @@ export const GET_TOOL_RESULT_TOOL: ToolSpec = {
 
 const READ_ONLY_TOOLS = [READ_BLACKBOARD_TOOL, LIST_BLACKBOARD_TOOL, GET_TOOL_RESULT_TOOL];
 
-/** Researcher, inventory and impact: every reversible A3 tool. Executor: blackboard reads and the gated issue tool. Critic: reads only. */
+/** Researcher, inventory and impact: every reversible A3 tool. Executor: blackboard reads and the gated issue/PR tools. Critic: reads only. */
 export function toolsForRole(role: SlotRole): ToolSpec[] {
   switch (role) {
     case "researcher":
@@ -290,7 +290,12 @@ export function toolsForRole(role: SlotRole): ToolSpec[] {
         ...Object.values(TOOL_SPECS).filter((spec) => !spec.irreversible),
       ];
     case "executor":
-      return [READ_BLACKBOARD_TOOL, LIST_BLACKBOARD_TOOL, TOOL_SPECS["github_create_issue"]!];
+      return [
+        READ_BLACKBOARD_TOOL,
+        LIST_BLACKBOARD_TOOL,
+        TOOL_SPECS["github_create_issue"]!,
+        TOOL_SPECS["github_open_fix_pr"]!,
+      ];
     case "critic":
     case "investigator":
       return READ_ONLY_TOOLS;

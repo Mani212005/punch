@@ -98,6 +98,31 @@ export const GitHubIssueResponseSchema = z.object({
 });
 export type GitHubIssueResponse = z.infer<typeof GitHubIssueResponseSchema>;
 
+export const GitHubRefResponseSchema = z.object({
+  ref: z.string(),
+  object: z.object({ sha: z.string(), type: z.string().optional() }),
+});
+export type GitHubRefResponse = z.infer<typeof GitHubRefResponseSchema>;
+
+export const GitHubPullResponseSchema = z.object({
+  id: z.number(),
+  number: z.number(),
+  title: z.string(),
+  body: z.string().nullable().optional(),
+  html_url: z.string(),
+  state: z.string(),
+  head: z.object({ ref: z.string(), sha: z.string() }).passthrough(),
+  base: z.object({ ref: z.string(), sha: z.string() }).passthrough(),
+  created_at: z.string().optional(),
+});
+export type GitHubPullResponse = z.infer<typeof GitHubPullResponseSchema>;
+
+export const GitHubContentUpsertResponseSchema = z.object({
+  content: z.object({ path: z.string(), sha: z.string() }).passthrough().optional(),
+  commit: z.object({ sha: z.string(), message: z.string().optional() }).passthrough().optional(),
+});
+export type GitHubContentUpsertResponse = z.infer<typeof GitHubContentUpsertResponseSchema>;
+
 export interface GitHubClientOptions {
   baseUrl?: string;
   token?: string;
@@ -275,6 +300,129 @@ export class GitHubClient {
       maxRetries: this.maxRetries,
       signal,
       tool: "github_create_issue",
+      fetch: this.fetchImpl,
+      traceSink: this.traceSink,
+    });
+  }
+
+  /** Read a branch ref to resolve the base SHA a fix branch starts from. */
+  async getRef(
+    owner: string,
+    repo: string,
+    branch: string,
+    signal?: AbortSignal,
+  ): Promise<HttpResponse<GitHubRefResponse>> {
+    const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/ref/heads/${encodeURIComponent(branch)}`;
+    return fetchWithRetry({
+      url,
+      method: "GET",
+      headers: this.getHeaders(),
+      schema: GitHubRefResponseSchema,
+      timeoutMs: this.timeoutMs,
+      maxRetries: this.maxRetries,
+      signal,
+      tool: "github_open_fix_pr",
+      fetch: this.fetchImpl,
+      traceSink: this.traceSink,
+    });
+  }
+
+  /** Create a branch ref pointing at a base SHA. First mutating step of the fix-PR sequence. */
+  async createRef(
+    owner: string,
+    repo: string,
+    branch: string,
+    sha: string,
+    signal?: AbortSignal,
+  ): Promise<HttpResponse<GitHubRefResponse>> {
+    const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs`;
+    return fetchWithRetry({
+      url,
+      method: "POST",
+      headers: this.getHeaders({ "Content-Type": "application/json" }),
+      body: { ref: `refs/heads/${branch}`, sha },
+      schema: GitHubRefResponseSchema,
+      timeoutMs: this.timeoutMs,
+      maxRetries: this.maxRetries,
+      signal,
+      tool: "github_open_fix_pr",
+      fetch: this.fetchImpl,
+      traceSink: this.traceSink,
+    });
+  }
+
+  /** Delete a branch ref. Used by the compensation registry when the PR sequence fails midway. */
+  async deleteRef(
+    owner: string,
+    repo: string,
+    branch: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs/heads/${encodeURIComponent(branch)}`;
+    await fetchWithRetry({
+      url,
+      method: "DELETE",
+      headers: this.getHeaders(),
+      timeoutMs: this.timeoutMs,
+      maxRetries: this.maxRetries,
+      signal,
+      tool: "github_open_fix_pr",
+      fetch: this.fetchImpl,
+      traceSink: this.traceSink,
+    });
+  }
+
+  /**
+   * Create or update one file on a branch. Only manifest/lockfile paths validated
+   * by the E5 sandbox may be written by the executor.
+   */
+  async upsertFile(
+    owner: string,
+    repo: string,
+    path: string,
+    params: { branch: string; content: string; message: string; sha?: string },
+    signal?: AbortSignal,
+  ): Promise<HttpResponse<GitHubContentUpsertResponse>> {
+    const cleanPath = path.replace(/^\//, "");
+    const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${cleanPath}`;
+    return fetchWithRetry({
+      url,
+      method: "PUT",
+      headers: this.getHeaders({ "Content-Type": "application/json" }),
+      body: {
+        message: params.message,
+        content: Buffer.from(params.content, "utf-8").toString("base64"),
+        branch: params.branch,
+        ...(params.sha ? { sha: params.sha } : {}),
+      },
+      schema: GitHubContentUpsertResponseSchema,
+      timeoutMs: this.timeoutMs,
+      maxRetries: this.maxRetries,
+      signal,
+      tool: "github_open_fix_pr",
+      fetch: this.fetchImpl,
+      traceSink: this.traceSink,
+    });
+  }
+
+  /** Open a pull request from a fix branch. */
+  async createPull(
+    owner: string,
+    repo: string,
+    pull: { title: string; body: string; head: string; base: string },
+    signal?: AbortSignal,
+  ): Promise<HttpResponse<GitHubPullResponse>> {
+    const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`;
+    return fetchWithRetry({
+      url,
+      method: "POST",
+      headers: this.getHeaders({ "Content-Type": "application/json" }),
+      body: pull,
+      schema: GitHubPullResponseSchema,
+      timeoutMs: this.timeoutMs,
+      maxRetries: this.maxRetries,
+      signal,
+      tool: "github_open_fix_pr",
       fetch: this.fetchImpl,
       traceSink: this.traceSink,
     });
