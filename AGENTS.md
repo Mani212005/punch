@@ -7,6 +7,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - `pnpm typecheck && pnpm lint && pnpm test` - full CI gate; must be green before merging.
 - `pnpm --filter @punch/core test` - run only core package tests (fastest for E-step work).
 - Live adapter tests (anthropic, gemini) are skipped by default; `jev.live.test.ts` runs against a local server and is always included.
+- `pnpm --filter web test:e2e` - Playwright console flow against a real engine server over a fixture run (`apps/web/e2e/engine-harness.mjs`); needs `pnpm build` and `npx playwright install chromium`; not part of the CI gate.
 
 ## Architecture
 

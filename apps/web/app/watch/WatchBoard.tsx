@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { createEventSource, useReplayController } from "@/lib/trace";
+import { loadPairing } from "@/lib/engine/client";
 import type { EventSourceConfig } from "@/lib/trace";
 import type { Subtask } from "@punch/shared";
 
@@ -34,6 +35,15 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
   });
 
   const [selectedSubtask, setSelectedSubtask] = useState<Subtask | null>(null);
+
+  // `/watch?run=<id>` follows a live run on the paired engine (linked from the console).
+  useEffect(() => {
+    const runId = new URLSearchParams(window.location.search).get("run");
+    const pairing = loadPairing();
+    if (runId && pairing) {
+      setSourceConfig({ kind: "sse", engineUrl: pairing.engineUrl, token: pairing.token, runId });
+    }
+  }, []);
 
   const eventSource = useMemo(() => {
     try {

@@ -113,6 +113,9 @@ export function useReplayController(
         // For static traces, start at full or first index based on autoPlay
         if (loadedEvents.length === 1) {
           setCurrentIndex(0);
+        } else if (eventSource.kind === "sse") {
+          // A live stream follows its own tail.
+          setCurrentIndex(loadedEvents.length - 1);
         }
       },
       (err) => {
