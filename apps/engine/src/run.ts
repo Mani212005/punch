@@ -12,6 +12,8 @@ import {
 import type { TraceEvent } from "@punch/shared";
 import { getConfigPath, loadConfig } from "./config/index.js";
 
+import { createCliApprovalGate } from "./cli-approval.js";
+
 export interface RunCommandOptions {
   config?: string;
   chaos?: string[];
@@ -66,9 +68,16 @@ export async function runCommand(
   options: RunCommandOptions = {},
 ): Promise<RunResult> {
   const log = options.log ?? ((line: string) => console.log(line));
+  const runId = `run-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const overrides: Partial<RunLoopOptions> = {
+    runId,
     chaos: options.chaos ?? [],
-    approval: { unattended: options.unattended ?? false },
+    approval: {
+      unattended: options.unattended ?? false,
+      gate: !(options.unattended ?? false)
+        ? createCliApprovalGate(options.runsDir ?? "runs", runId)
+        : undefined,
+    },
     onEvent: (event) => {
       const line = describeEvent(event);
       if (line) log(line);
