@@ -32,6 +32,29 @@ describe("investigation views render from the committed trace", () => {
     expect(screen.getAllByText("ACCEPTED")).toHaveLength(2);
   });
 
+  it("shows supply-chain signals beside a finding that has them", () => {
+    const s = stateAt(null);
+    const report = findInvestigationReport(s.blackboard)!;
+    report.findings[0]!.supplyChain = [
+      {
+        kind: "install_script",
+        severity: "HIGH",
+        detail: "postinstall runs curl",
+        version: report.findings[0]!.version,
+      },
+    ];
+    render(
+      <InvestigationReportTile
+        blackboard={{ report: { key: "report", value: report } as never }}
+        criticVerdicts={s.criticVerdicts}
+      />,
+    );
+    const box = screen.getByTestId(`supply-chain-${report.findings[0]!.id}`);
+    expect(box).toHaveTextContent("install script");
+    expect(box).toHaveTextContent("postinstall runs curl");
+    expect(screen.queryAllByText("supply-chain signals")).toHaveLength(1);
+  });
+
   it("drills into a claim to show who claimed it and the verifier", () => {
     const s = stateAt(null);
     render(<EvidenceLedgerTile claims={s.claims} evidence={s.evidence} logs={s.logs.entries} />);

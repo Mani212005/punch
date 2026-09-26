@@ -27,6 +27,7 @@ export * from "./tools/source-tools.js";
 export * from "./tools/registry.js";
 export * from "./ledger/index.js";
 export * from "./analysis/index.js";
+export * from "./supplychain/index.js";
 export * from "./adapters/agent.js";
 export * from "./adapters/anthropic.js";
 export * from "./adapters/cli/runner.js";

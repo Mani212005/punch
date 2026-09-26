@@ -16,6 +16,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Adversarial critic (E3): `packages/core/src/roles/critic.ts` - runs all 10 `CRITIC_CHALLENGE_IDS` per finding, emits `critic.verdict`, and on rejection provides a `newTask` for the run loop to replan.
 - `CriticVerdict` in `packages/shared/src/investigation.ts` is both a Zod schema (value) and a TS type - import as a value when calling `.safeParse()`.
 - The run loop (`packages/core/src/run/loop.ts`) routes `requestedTask` from a rejected verdict to a bounded targeted replan; see `replan.triggered` trace event.
+- Supply-chain signals (E9): `packages/core/src/supplychain/` (pure `analyzeSupplyChain` over npm metadata; `runSupplyChainPass` attaches `supplyChain` to findings and the ledger); fixtures in `fixtures/npm/supplychain/`.
 
 ## Maintaining this file
 
