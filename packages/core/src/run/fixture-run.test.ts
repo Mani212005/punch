@@ -346,7 +346,8 @@ describe("adapter selection", () => {
   });
 
   it("the default registry serves anthropic", () => {
-    expect(createDefaultAdapterRegistry().has("anthropic")).toBe(true);
+    const registry = createDefaultAdapterRegistry();
+    expect(registry.kinds()).toEqual(expect.arrayContaining(["anthropic", "gemini"]));
   });
 });
 

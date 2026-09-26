@@ -1,5 +1,6 @@
 import type { AgentAdapter, AgentEntry, Provider } from "@punch/shared";
 import { createAnthropicAdapter, type ToolExecutor } from "../adapters/anthropic.js";
+import { GeminiAdapter } from "../adapters/gemini.js";
 import type { AgentChaos } from "../adapters/agent.js";
 
 /** What a factory needs to build an adapter for one agent invocation. */
@@ -52,9 +53,23 @@ export class AdapterRegistry {
   }
 }
 
-/** Every adapter that exists on main. Gemini and the CLI adapters register here as they land. */
+/** Every adapter that exists on main. The CLI adapters register here as they land. */
 export function createDefaultAdapterRegistry(): AdapterRegistry {
-  return new AdapterRegistry().register("anthropic", ({ agent, provider, executeTool, chaos }) =>
-    createAnthropicAdapter(agent, provider, { executeTool, chaos }),
-  );
+  return new AdapterRegistry()
+    .register("anthropic", ({ agent, provider, executeTool, chaos }) =>
+      createAnthropicAdapter(agent, provider, { executeTool, chaos }),
+    )
+    .register("gemini", ({ agent, provider, executeTool, chaos }) => {
+      const api = provider.kind === "gemini" ? provider : undefined;
+      return new GeminiAdapter({
+        model: agent.model,
+        providerId: provider.id,
+        executeTool,
+        chaos,
+        ...(api
+          ? { apiKeyEnv: api.apiKeyEnv, ...(api.baseUrl ? { baseUrl: api.baseUrl } : {}) }
+          : {}),
+        ...(agent.pricing ? { pricing: agent.pricing } : {}),
+      });
+    });
 }
