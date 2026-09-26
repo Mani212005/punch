@@ -30,3 +30,6 @@ export * from "./roles/researcher.js";
 export * from "./roles/executor.js";
 export * from "./roles/critic.js";
 export * from "./roles/review.js";
+
+// Run loop
+export * from "./run/index.js";

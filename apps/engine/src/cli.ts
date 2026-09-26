@@ -1,12 +1,17 @@
 import { Command } from "commander";
 import { getConfigPath, loadConfig, ConfigError } from "./config/index.js";
 import { TestAdapterRegistry } from "./config/registry.js";
+import { runCommand } from "./run.js";
 
 export class NotImplementedError extends Error {
   constructor(command: string) {
     super(`punch ${command}: not implemented yet`);
     this.name = "NotImplementedError";
   }
+}
+
+function collect(value: string, previous: string[]): string[] {
+  return [...previous, value];
 }
 
 function stub(command: string): () => never {
@@ -27,8 +32,28 @@ export function buildProgram(): Command {
   program
     .command("run")
     .description("run the reference task against a GitHub repository")
-    .argument("<repoUrl>", "GitHub repository URL")
-    .action(stub("run"));
+    .argument("<target>", "GitHub repository URL, or a fixture directory to replay offline")
+    .option("-c, --config <path>", "path to config file")
+    .option(
+      "--chaos <profile>",
+      "chaos profile, repeatable (tool:<name>:500|hang|truncate|empty)",
+      collect,
+      [],
+    )
+    .option("--unattended", "auto-deny irreversible actions instead of asking")
+    .option("--budget-usd <usd>", "spend cap in USD for this run", Number)
+    .action(async (target: string, options) => {
+      const controller = new AbortController();
+      process.once("SIGINT", () => controller.abort());
+      const result = await runCommand(target, {
+        config: options.config,
+        chaos: options.chaos,
+        unattended: options.unattended,
+        budgetUsd: options.budgetUsd,
+        signal: controller.signal,
+      });
+      if (result.status === "failed") process.exitCode = 1;
+    });
   program
     .command("kill")
     .description("operator kill of the agent in a slot (demo lever)")

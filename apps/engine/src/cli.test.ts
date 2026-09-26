@@ -3,7 +3,6 @@ import { buildProgram, NotImplementedError } from "./cli.js";
 
 const cases: string[][] = [
   ["serve"],
-  ["run", "https://github.com/a/b"],
   ["kill", "run1", "researcher"],
   ["approve", "run1"],
   ["deny", "run1"],

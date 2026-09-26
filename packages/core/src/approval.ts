@@ -59,3 +59,19 @@ export class CallbackApprovalGate implements ApprovalGate {
     return this.callback(request);
   }
 }
+
+export interface RunApprovalOptions {
+  /** `--unattended`: nothing irreversible is ever approved, whatever hook is attached. */
+  unattended?: boolean;
+  /** The interactive approve/deny hook (the CLI in A10, the console later). */
+  gate?: ApprovalGate;
+}
+
+/**
+ * The gate the run loop hands to the tool layer. There is no auto-approve: without an attached
+ * approver an irreversible request is denied, so a run never acts without a human decision.
+ */
+export function selectApprovalGate(options: RunApprovalOptions = {}): ApprovalGate {
+  if (options.unattended) return new DenyAllApprovalGate();
+  return options.gate ?? new DenyAllApprovalGate("no approver is attached to this run");
+}
