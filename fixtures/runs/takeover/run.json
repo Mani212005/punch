@@ -27,7 +27,11 @@
         "costTier": "high",
         "roles": [
           "planner",
+          "inventory",
           "researcher",
+          "reachability",
+          "impact",
+          "investigator",
           "executor",
           "critic"
         ],
@@ -45,7 +49,11 @@
         "costTier": "medium",
         "roles": [
           "planner",
+          "inventory",
           "researcher",
+          "reachability",
+          "impact",
+          "investigator",
           "executor",
           "critic"
         ],
@@ -63,7 +71,11 @@
         "costTier": "low",
         "roles": [
           "planner",
+          "inventory",
           "researcher",
+          "reachability",
+          "impact",
+          "investigator",
           "executor",
           "critic"
         ],
@@ -165,6 +177,46 @@
             "opus": 0.2,
             "sonnet": 0.3,
             "gemini": 0.5
+          }
+        },
+        "role_inventory": {
+          "type": "choice",
+          "choice": "sonnet",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.15,
+            "sonnet": 0.7,
+            "gemini": 0.15
+          }
+        },
+        "role_reachability": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.7,
+            "sonnet": 0.15,
+            "gemini": 0.15
+          }
+        },
+        "role_impact": {
+          "type": "choice",
+          "choice": "sonnet",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.15,
+            "sonnet": 0.7,
+            "gemini": 0.15
+          }
+        },
+        "role_investigator": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.7,
+            "sonnet": 0.15,
+            "gemini": 0.15
           }
         }
       }

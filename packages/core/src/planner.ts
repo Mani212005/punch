@@ -1,6 +1,12 @@
 import type { Subtask } from "@punch/shared";
 import { Plan, type BlackboardEntry } from "@punch/shared";
 import { REMEDIATION_REPORT_SCHEMA } from "./roles/executor.js";
+import { IMPACT_RESULT_JSON_SCHEMA } from "./roles/impact.js";
+import { INVESTIGATOR_RESULT_JSON_SCHEMA } from "./roles/investigator.js";
+import { INVENTORY_RESULT_JSON_SCHEMA } from "./roles/inventory.js";
+import { REACHABILITY_RESULT_JSON_SCHEMA } from "./roles/reachability.js";
+import { VULNERABILITY_RESEARCH_JSON_SCHEMA } from "./roles/researcher.js";
+import { ValidationStepResultSchema } from "./roles/validator.js";
 import {
   GENERIC_OBJECT_SCHEMA,
   RoleRunError,
@@ -100,28 +106,45 @@ export function validatePlan(plan: Plan, options: ValidatePlanOptions = {}): str
   return errors;
 }
 
-/** Fills the output schema the planner left out: the report shape for the executor, an object otherwise. */
+/** Default output schema per investigation role; the executor keeps its report shape. */
+const ROLE_DEFAULT_SCHEMAS: Record<string, Record<string, unknown>> = {
+  inventory: INVENTORY_RESULT_JSON_SCHEMA,
+  researcher: VULNERABILITY_RESEARCH_JSON_SCHEMA,
+  reachability: REACHABILITY_RESULT_JSON_SCHEMA,
+  impact: IMPACT_RESULT_JSON_SCHEMA,
+  investigator: INVESTIGATOR_RESULT_JSON_SCHEMA,
+};
+
+/** Fills the output schema the planner left out: per-role investigation shapes, report for the executor. */
 function withDefaultSchemas(plan: Plan): Plan {
   return {
-    subtasks: plan.subtasks.map((s) => ({
-      ...s,
-      status: "pending",
-      output: {
-        ...s.output,
-        schema:
-          s.output.schema ??
-          (s.roleHint === "executor" ? REMEDIATION_REPORT_SCHEMA : GENERIC_OBJECT_SCHEMA),
-      },
-    })),
+    subtasks: plan.subtasks.map((s) => {
+      if (s.output.schema) return { ...s, status: "pending" as const };
+      const schema = s.sandboxValidation
+        ? jsonSchemaOf(ValidationStepResultSchema)
+        : (ROLE_DEFAULT_SCHEMAS[s.roleHint] ??
+          (s.roleHint === "executor" ? REMEDIATION_REPORT_SCHEMA : GENERIC_OBJECT_SCHEMA));
+      return { ...s, status: "pending" as const, output: { ...s.output, schema } };
+    }),
   };
 }
 
-export const PLANNER_SYSTEM = `You are the planner for a dependency security triage run on a GitHub repository. You decompose the brief into a DAG of subtasks. You have no tools; answer through write_result.
+export const PLANNER_SYSTEM = `You are the planner for a dependency security investigation run on a GitHub repository. You decompose the brief into a DAG of subtasks. You have no tools; answer through write_result.
+
+The investigation DAG template (one line per role, per plan.md section 1):
+- inventory: lists what is actually installed, so "package present" is evidence, not assumption.
+- researcher (vulnerability research): sources the vulnerability facts from independent databases so claims cross-check.
+- reachability: answers whether the affected code can actually run in this repository; the core differentiator.
+- impact: separates "is there a fix" from "is the fix safe", using release notes and real usage.
+- investigator: reconciles the four evidence streams into one accountable conclusion per vulnerability.
+- validator (code, never a slot): simulates the upgrade in isolation; a model here would only be an opinion.
+- executor: acts outside the program only after human approval.
 
 Rules:
-- Each subtask has a unique "id", a "title", a "description" precise enough for an agent to act on alone, "dependsOn" (ids), and a "roleHint": "researcher" (gathers data with tools: repository files, OSV, GitHub Advisory, npm, releases and changelogs), "executor" (writes the remediation report and, only if the brief asks and a human approves, files the issue), or "critic" is not a subtask role - do not plan critic subtasks.
-- "output.key" is the unique blackboard key the subtask writes; "output.schema" is a JSON Schema for its value. "inputKeys" lists blackboard keys it reads, and every one must be produced by a subtask it depends on (directly or transitively).
-- Typical shape: inventory dependencies, then per-dependency vulnerability lookups and release-note checks, then one executor subtask that writes the prioritized remediation report (vulnerable dependencies, fixed versions, breaking-change risk of each upgrade, recommended action).
+- Each subtask has a unique "id", a "title", a "description" precise enough for an agent to act on alone, "dependsOn" (ids), and a "roleHint": "inventory", "researcher", "reachability", "impact", "investigator", or "executor". "critic" is not a subtask role - do not plan critic subtasks; every producing subtask is critiqued automatically.
+- Follow the template waves: inventory and vulnerability research in parallel; then reachability and upgrade impact in parallel, each assessing every vulnerability the research found; then one investigator subtask synthesizing the findings with candidate remediations; then one sandbox validation subtask; then one executor subtask writing the report. Reachability and impact read the inventory and research keys; the investigator reads all four; validation reads the investigator and inventory keys; the executor reads the investigator and validation keys.
+- The sandbox validation subtask is code-driven, not an agent slot: set "sandboxValidation": true on it (its roleHint is unused), give it an output key starting with "validation_", and describe which remediations to simulate. The run loop executes it with the isolated validator; no agent is routed.
+- "output.key" is the unique blackboard key the subtask writes; "output.schema" is a JSON Schema for its value (omit it to accept the role's default investigation shape). "inputKeys" lists blackboard keys it reads, and every one must be produced by a subtask it depends on (directly or transitively).
 - The graph must be acyclic. Keep it small: only subtasks that produce something a later subtask or the report needs.
 - Give every subtask acceptance criteria inside its description.`;
 

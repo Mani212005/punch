@@ -119,19 +119,25 @@ export function redactSecrets(value: unknown, options?: RedactOptions): unknown 
     }
     visited.add(val);
 
-    if (Array.isArray(val)) {
-      return val.map((item) => deepRedact(item, visited));
-    }
-
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(val)) {
-      if (SENSITIVE_KEY_REGEX.test(k)) {
-        result[k] = "[REDACTED]";
-      } else {
-        result[k] = deepRedact(v, visited);
+    // `visited` holds the current ancestors only, so a shared (non-circular) object such as a
+    // default schema reused by two subtasks is redacted twice, not mistaken for a cycle.
+    try {
+      if (Array.isArray(val)) {
+        return val.map((item) => deepRedact(item, visited));
       }
+
+      const result: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(val)) {
+        if (SENSITIVE_KEY_REGEX.test(k)) {
+          result[k] = "[REDACTED]";
+        } else {
+          result[k] = deepRedact(v, visited);
+        }
+      }
+      return result;
+    } finally {
+      visited.delete(val);
     }
-    return result;
   }
 
   return deepRedact(value, new WeakSet());

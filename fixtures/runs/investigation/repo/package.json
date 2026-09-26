@@ -1,0 +1,14 @@
+{
+  "name": "vuln-shop",
+  "version": "1.0.0",
+  "description": "Fixture shop app: qs is used on a reachable route, unused-vuln-lib is never imported",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "qs": "6.5.2",
+    "unused-vuln-lib": "1.0.0"
+  }
+}

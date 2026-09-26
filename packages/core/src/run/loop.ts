@@ -29,7 +29,12 @@ import {
 } from "../roles/common.js";
 import { acceptedVerdict, reviewDraft } from "../roles/critic.js";
 import { runExecutor, REMEDIATION_REPORT_SCHEMA } from "../roles/executor.js";
+import { runImpact } from "../roles/impact.js";
+import { runInvestigator } from "../roles/investigator.js";
+import { runInventory } from "../roles/inventory.js";
+import { runReachability } from "../roles/reachability.js";
 import { runResearcher } from "../roles/researcher.js";
+import { runValidationStep } from "../roles/validator.js";
 import { produceWithReview } from "../roles/review.js";
 import type { Jev } from "../router/jev.js";
 import { ROUTED_ROLES } from "../router/jev.js";
@@ -58,7 +63,11 @@ export interface RoleHandler {
 export type RoleRegistry = Partial<Record<SlotRole, RoleHandler>>;
 
 export const DEFAULT_ROLE_REGISTRY: RoleRegistry = {
+  inventory: { produce: runInventory },
   researcher: { produce: runResearcher },
+  reachability: { produce: runReachability },
+  impact: { produce: runImpact },
+  investigator: { produce: runInvestigator },
   executor: { produce: runExecutor },
 };
 
@@ -741,6 +750,27 @@ export async function runLoop(options: RunLoopOptions): Promise<RunResult> {
     setStatus(subtask.id, "running");
     const ledger = new ToolLedger();
     ledgers.set(subtask.id, ledger);
+
+    // Code-driven sandbox validation (plan.md 8.4, E2): the E5 validator runs the real
+    // commands, so no slot, no agent and no Jev routing. The trace names role `validator`.
+    if (subtask.sandboxValidation) {
+      meter.recordStep();
+      reserveCheck();
+      const draft = await runValidationStep({
+        subtaskId: subtask.id,
+        inputs: blackboard.getInputs(subtask.inputKeys, { allowMissing: true }),
+        emit: (e) => emit(e as EventBody),
+      });
+      blackboard.writeNewVersion({
+        key: subtask.output.key,
+        value: draft.value,
+        evidence: draft.evidence,
+        status: "ok",
+        writtenBy: { role: "validator", agentId: "validator", subtaskId: subtask.id },
+      });
+      setStatus(subtask.id, "completed");
+      return;
+    }
 
     // Per-subtask routing: assignee from Jev, effort from complexity (plan.md 3.5).
     let role: SlotRole = subtask.roleHint;

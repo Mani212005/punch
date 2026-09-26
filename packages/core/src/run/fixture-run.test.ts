@@ -50,13 +50,22 @@ describe("fixture run, no chaos", () => {
     const k = kinds(r);
     expect(k[0]).toBe("run.started");
     // route once, then a slot per role
-    expect(k.slice(1, 5)).toEqual(Array(4).fill("route.decided"));
-    expect(k.slice(5, 9)).toEqual(Array(4).fill("slot.assigned"));
-    expect(k.indexOf("plan.created")).toBeGreaterThan(8);
+    expect(k.slice(1, 9)).toEqual(Array(8).fill("route.decided"));
+    expect(k.slice(9, 17)).toEqual(Array(8).fill("slot.assigned"));
+    expect(k.indexOf("plan.created")).toBeGreaterThan(16);
     expect(k.indexOf("agent.started")).toBeLessThan(k.indexOf("plan.created"));
 
     const assigned = of(r, "slot.assigned");
-    expect(assigned.map((e) => e.role)).toEqual(["planner", "researcher", "executor", "critic"]);
+    expect(assigned.map((e) => e.role)).toEqual([
+      "planner",
+      "inventory",
+      "researcher",
+      "reachability",
+      "impact",
+      "investigator",
+      "executor",
+      "critic",
+    ]);
     expect(assigned.find((e) => e.role === "critic")!.agentId).not.toBe(
       assigned.find((e) => e.role === "executor")!.agentId,
     );
@@ -84,7 +93,9 @@ describe("fixture run, no chaos", () => {
     const s3Start = r.events.findIndex((e) => e.kind === "agent.started" && e.subtaskId === "s3");
     expect(s3Start).toBeLessThan(written("vulns"));
 
-    for (const slot of r.slots) expect(["completed", "failed", "rejected"]).toContain(slot.state);
+    // Investigation slots the clean fixture's plan never uses stay assigned.
+    for (const slot of r.slots)
+      expect(["assigned", "completed", "failed", "rejected"]).toContain(slot.state);
     expect(r.slots.every((s) => s.lastHeartbeatAt > 0)).toBe(true);
   });
 });

@@ -1,0 +1,10 @@
+{
+  "name": "unused-vuln-lib",
+  "description": "Fixture library that is never imported",
+  "dist-tags": { "latest": "1.2.0" },
+  "versions": {
+    "1.0.0": { "name": "unused-vuln-lib", "version": "1.0.0" },
+    "1.2.0": { "name": "unused-vuln-lib", "version": "1.2.0" }
+  },
+  "time": { "1.0.0": "2023-01-01T00:00:00.000Z", "1.2.0": "2024-01-20T00:00:00.000Z" }
+}
