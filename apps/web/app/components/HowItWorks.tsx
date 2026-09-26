@@ -184,9 +184,7 @@ export default function HowItWorks() {
             transition: "background var(--bz-dur) var(--bz-ease)",
           }}
         >
-          <span
-            className={`bz-glyph lg ${activeStep === "recover" ? "warn" : "run"}`}
-          />
+          <span className={`bz-glyph lg ${activeStep === "recover" ? "warn" : "run"}`} />
           <div style={{ flex: 1 }}>
             {activeStep === "plan" && (
               <span>
@@ -425,13 +423,7 @@ export default function HowItWorks() {
                 strokeWidth="1"
                 markerEnd="url(#bzarr-arch)"
               />
-              <rect
-                x="384"
-                y="122"
-                width="46"
-                height="18"
-                fill="var(--bz-blue)"
-              />
+              <rect x="384" y="122" width="46" height="18" fill="var(--bz-blue)" />
               <text x="407" y="134" fontSize="7" textAnchor="middle" className="inv">
                 s2 vulns
               </text>
