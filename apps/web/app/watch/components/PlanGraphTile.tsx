@@ -1,11 +1,13 @@
 import React from "react";
 import type { Subtask } from "@punch/shared";
 import type { PlanGraphState, SlotLaneState, TakeoverBannerState } from "@/lib/trace/types";
+import { formatTime } from "./formatters";
 
 interface PlanGraphTileProps {
   plan: PlanGraphState;
   activeTakeover: TakeoverBannerState | null;
   slots: Record<string, SlotLaneState>;
+  runStartTime?: number;
   onSelectSubtask: (subtask: Subtask) => void;
   selectedSubtaskId?: string | null;
 }
@@ -45,6 +47,7 @@ export default function PlanGraphTile({
   plan,
   activeTakeover,
   slots,
+  runStartTime,
   onSelectSubtask,
   selectedSubtaskId,
 }: PlanGraphTileProps) {
@@ -135,6 +138,11 @@ export default function PlanGraphTile({
 
   const researcherReplaced = slots.researcher?.replaced && slots.researcher.replaced.length > 0;
   const isTakeoverHappened = Boolean(activeTakeover || researcherReplaced);
+
+  // Taken-over caption time: same slot.failed timestamp the banner and kill marker use.
+  const failedTs = activeTakeover ? activeTakeover.ts - (activeTakeover.detectionMs ?? 0) : 0;
+  const takenOverTime =
+    activeTakeover && runStartTime ? formatTime(Math.max(0, failedTs - runStartTime)) : "00:13";
 
   return (
     <div className="bz-tile c5">
@@ -276,7 +284,7 @@ export default function PlanGraphTile({
                     textAnchor="middle"
                     className="t-muted"
                   >
-                    was Opus 5 · taken over 03:07
+                    was Opus 5 · taken over {takenOverTime}
                   </text>
                 )}
               </g>

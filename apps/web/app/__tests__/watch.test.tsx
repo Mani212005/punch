@@ -63,7 +63,7 @@ describe("Watch Board Replay Page", () => {
       expect(screen.getByText("github.com/acme/webapp")).toBeInTheDocument();
       expect(screen.getByText(/Researcher slot: Opus 5 failed/i)).toBeInTheDocument();
       expect(screen.getByText("timeline")).toBeInTheDocument();
-      expect(screen.getByText("03:07 kill")).toBeInTheDocument();
+      expect(screen.getByText("00:13 kill")).toBeInTheDocument();
       expect(screen.getByText("08:00 cap")).toBeInTheDocument();
 
       // Replaced agent stack

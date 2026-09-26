@@ -1,5 +1,5 @@
 import React from "react";
-import type { TimelineMarker, TimelineSpan } from "@/lib/trace/types";
+import type { BoardRunState, SlotLaneState, TimelineMarker, TimelineSpan } from "@/lib/trace/types";
 import { formatTime } from "./formatters";
 
 interface TimelineTileProps {
@@ -9,6 +9,8 @@ interface TimelineTileProps {
   speed: 1 | 4;
   spans?: TimelineSpan[];
   markers?: TimelineMarker[];
+  slots?: Record<string, SlotLaneState>;
+  run?: BoardRunState;
   onTogglePlay: () => void;
   onStepForward: () => void;
   onStepBackward: () => void;
@@ -21,6 +23,9 @@ export default function TimelineTile({
   totalEvents,
   isPlaying,
   speed,
+  markers = [],
+  slots = {},
+  run,
   onTogglePlay,
   onStepForward,
   onStepBackward,
@@ -37,9 +42,26 @@ export default function TimelineTile({
   const currentSeconds = Math.round(nowRatio * 192); // ~ 03:12
   const nowTimeStr = formatTime(currentSeconds * 1000);
 
+  // Dynamic slot states for bars
+  const isExecutorDone = slots.executor?.state === "completed" || run?.status === "completed";
+  const isExecutorRunning = slots.executor?.state === "running";
+
+  const isCriticDone = slots.critic?.state === "completed" || run?.status === "completed";
+  const isCriticRunning = slots.critic?.state === "running";
+
+  // Dynamic kill marker time
+  const killMarker = markers.find((m) => m.type === "kill");
+  const killElapsedMs =
+    killMarker && run?.startTime
+      ? Math.max(0, killMarker.ts - run.startTime)
+      : killMarker?.ts
+        ? killMarker.ts % 10000000
+        : 13000;
+  const killTimeStr = formatTime(killElapsedMs);
+
   return (
     <div className="bz-tile c12">
-      <div className="bz-label">
+      <div className="bz-label" style={{ flexWrap: "wrap", rowGap: "8px" }}>
         timeline
         {totalEvents > 0 && (
           <span className="bz-mono bz-muted" style={{ marginLeft: "8px", fontWeight: "normal" }}>
@@ -111,103 +133,143 @@ export default function TimelineTile({
         />
       </div>
 
-      {/* Inline SVG Gantt Chart */}
-      <svg
-        className="fig"
-        viewBox="0 0 1000 140"
-        role="img"
-        aria-label="Timeline with the kill at 03:07 and the takeover 1.8 seconds later"
-        style={{ width: "100%", height: "auto" }}
+      {/* Horizontally scrollable SVG Gantt Chart container for mobile */}
+      <div
+        style={{
+          width: "100%",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+        }}
       >
-        {/* Planner Row */}
-        <text x="6" y="24" fontSize="10">
-          planner
-        </text>
-        <rect x="90" y="14" width="70" height="14" fill="#121212" />
+        <svg
+          className="fig"
+          viewBox="0 0 1000 140"
+          role="img"
+          aria-label={`Timeline with the kill at ${killTimeStr} and the takeover 1.8 seconds later`}
+          style={{ minWidth: "680px", width: "100%", height: "auto", display: "block" }}
+        >
+          {/* Planner Row */}
+          <text x="6" y="24" fontSize="10">
+            planner
+          </text>
+          <rect x="90" y="14" width="70" height="14" fill="#121212" />
 
-        {/* Researcher Row */}
-        <text x="6" y="50" fontSize="10">
-          researcher
-        </text>
-        {/* Opus 5 Predecessor Bar */}
-        <rect x="165" y="40" width="360" height="14" fill="#121212" />
-        <text x="171" y="51" fontSize="9" className="inv">
-          Opus 5 · s1 s2 s3
-        </text>
+          {/* Researcher Row */}
+          <text x="6" y="50" fontSize="10">
+            researcher
+          </text>
+          {/* Opus 5 Predecessor Bar */}
+          <rect x="165" y="40" width="360" height="14" fill="#121212" />
+          <text x="171" y="51" fontSize="9" className="inv">
+            Opus 5 · s1 s2 s3
+          </text>
 
-        {/* Kill Marker (6px red bar) */}
-        <rect x="525" y="40" width="6" height="14" fill="#E4321B" />
+          {/* Kill Marker (6px red bar) */}
+          <rect x="525" y="40" width="6" height="14" fill="#E4321B" />
 
-        {/* Gemini Flash Replacement Bar */}
-        <rect x="548" y="40" width="220" height="14" fill="#1F48C5" />
-        <text x="554" y="51" fontSize="9" className="inv">
-          Gemini Flash · s3 resumed
-        </text>
+          {/* Gemini Flash Replacement Bar */}
+          <rect x="548" y="40" width="220" height="14" fill="#1F48C5" />
+          <text x="554" y="51" fontSize="9" className="inv">
+            Gemini Flash · s3 resumed
+          </text>
 
-        {/* Detection Gap Red Hairline & Duration */}
-        <line x1="531" y1="62" x2="548" y2="62" stroke="#E4321B" strokeWidth="2" />
-        <text x="540" y="75" fontSize="9" textAnchor="middle" className="t-red">
-          1.8s
-        </text>
+          {/* Detection Gap Red Hairline & Duration */}
+          <line x1="531" y1="62" x2="548" y2="62" stroke="#E4321B" strokeWidth="2" />
+          <text x="540" y="75" fontSize="9" textAnchor="middle" className="t-red">
+            1.8s
+          </text>
 
-        {/* Executor Row */}
-        <text x="6" y="96" fontSize="10">
-          executor
-        </text>
-        <rect
-          x="770"
-          y="86"
-          width="120"
-          height="14"
-          fill="none"
-          stroke="#A39E93"
-          strokeWidth="2"
-          strokeDasharray="4 3"
-        />
+          {/* Executor Row */}
+          <text x="6" y="96" fontSize="10">
+            executor
+          </text>
+          {isExecutorDone ? (
+            <>
+              <rect x="770" y="86" width="120" height="14" fill="#121212" />
+              <text x="776" y="97" fontSize="9" className="inv">
+                Opus 5.5 · s5 s7
+              </text>
+            </>
+          ) : isExecutorRunning ? (
+            <>
+              <rect x="770" y="86" width="120" height="14" fill="#1F48C5" />
+              <text x="776" y="97" fontSize="9" className="inv">
+                Opus 5.5 · s5
+              </text>
+            </>
+          ) : (
+            <rect
+              x="770"
+              y="86"
+              width="120"
+              height="14"
+              fill="none"
+              stroke="#A39E93"
+              strokeWidth="2"
+              strokeDasharray="4 3"
+            />
+          )}
 
-        {/* Critic Row */}
-        <text x="6" y="122" fontSize="10">
-          critic
-        </text>
-        <rect
-          x="895"
-          y="112"
-          width="90"
-          height="14"
-          fill="none"
-          stroke="#A39E93"
-          strokeWidth="2"
-          strokeDasharray="4 3"
-        />
+          {/* Critic Row */}
+          <text x="6" y="122" fontSize="10">
+            critic
+          </text>
+          {isCriticDone ? (
+            <>
+              <rect x="895" y="112" width="90" height="14" fill="#121212" />
+              <text x="901" y="123" fontSize="9" className="inv">
+                Grok · s6
+              </text>
+            </>
+          ) : isCriticRunning ? (
+            <>
+              <rect x="895" y="112" width="90" height="14" fill="#1F48C5" />
+              <text x="901" y="123" fontSize="9" className="inv">
+                Grok · review
+              </text>
+            </>
+          ) : (
+            <rect
+              x="895"
+              y="112"
+              width="90"
+              height="14"
+              fill="none"
+              stroke="#A39E93"
+              strokeWidth="2"
+              strokeDasharray="4 3"
+            />
+          )}
 
-        {/* Baseline Axis */}
-        <line x1="90" y1="132" x2="990" y2="132" stroke="#121212" strokeWidth="2" />
+          {/* Baseline Axis */}
+          <line x1="90" y1="132" x2="990" y2="132" stroke="#121212" strokeWidth="2" />
 
-        {/* Time Axis Labels */}
-        <text x="90" y="139" fontSize="8" className="t-muted">
-          00:00
-        </text>
-        <text x="530" y="139" fontSize="8" className="t-red" textAnchor="middle">
-          03:07 kill
-        </text>
-        <text x={nowX} y="139" fontSize="8" className="t-blue" textAnchor="middle">
-          now {nowTimeStr}
-        </text>
-        <text x="990" y="139" fontSize="8" className="t-muted" textAnchor="end">
-          08:00 cap
-        </text>
+          {/* Time Axis Labels */}
+          <text x="90" y="139" fontSize="8" className="t-muted">
+            00:00
+          </text>
+          <text x="530" y="139" fontSize="8" className="t-red" textAnchor="middle">
+            {killTimeStr} kill
+          </text>
+          <text x={nowX} y="139" fontSize="8" className="t-blue" textAnchor="middle">
+            now {nowTimeStr}
+          </text>
+          <text x="990" y="139" fontSize="8" className="t-muted" textAnchor="end">
+            08:00 cap
+          </text>
 
-        {/* Vertical Blue "Now" Cursor */}
-        <line
-          x1={nowX}
-          y1="6"
-          x2={nowX}
-          y2="132"
-          stroke="#1F48C5"
-          strokeWidth="2"
-          strokeDasharray="5 4"
-        />
-      </svg>
+          {/* Vertical Blue "Now" Cursor */}
+          <line
+            x1={nowX}
+            y1="6"
+            x2={nowX}
+            y2="132"
+            stroke="#1F48C5"
+            strokeWidth="2"
+            strokeDasharray="5 4"
+          />
+        </svg>
+      </div>
     </div>
   );
 }

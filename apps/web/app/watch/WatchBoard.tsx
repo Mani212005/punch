@@ -102,7 +102,11 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
 
           {/* Row 2: Takeover Banner (12 cols) */}
           {state.takeover.active && (
-            <TakeoverBanner banner={state.takeover.active} subtasks={state.plan.subtasks} />
+            <TakeoverBanner
+              banner={state.takeover.active}
+              subtasks={state.plan.subtasks}
+              runStartTime={state.run.startTime}
+            />
           )}
 
           {/* Row 3 & 4: Bento layout (3 + 5 + 4 cols = 12 cols) */}
@@ -118,6 +122,7 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
             plan={state.plan}
             activeTakeover={state.takeover.active}
             slots={state.slots}
+            runStartTime={state.run.startTime}
             onSelectSubtask={(st) => setSelectedSubtask(st)}
             selectedSubtaskId={selectedSubtask?.id}
           />
@@ -136,6 +141,8 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
             speed={speed}
             spans={state.timeline.spans}
             markers={state.timeline.markers}
+            slots={state.slots}
+            run={state.run}
             onTogglePlay={togglePlay}
             onStepForward={stepForward}
             onStepBackward={stepBackward}

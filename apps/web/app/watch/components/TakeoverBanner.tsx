@@ -6,9 +6,14 @@ import { formatAgentDisplayName, formatTime } from "./formatters";
 interface TakeoverBannerProps {
   banner: TakeoverBannerState;
   subtasks?: Subtask[];
+  runStartTime?: number;
 }
 
-export default function TakeoverBanner({ banner, subtasks = [] }: TakeoverBannerProps) {
+export default function TakeoverBanner({
+  banner,
+  subtasks = [],
+  runStartTime,
+}: TakeoverBannerProps) {
   const roleName = banner.role.charAt(0).toUpperCase() + banner.role.slice(1);
   const failedAgent = formatAgentDisplayName(banner.failedAgentId);
   const replacementAgent = formatAgentDisplayName(banner.replacementAgentId);
@@ -22,7 +27,16 @@ export default function TakeoverBanner({ banner, subtasks = [] }: TakeoverBanner
       ? (banner.takeoverMs / 1000).toFixed(1)
       : "1.8";
 
-  const failTime = banner.ts ? formatTime(banner.ts % 10000000) : "03:07";
+  // Failure time: banner.ts is the slot.replacing event; slot.failed happened detectionMs earlier.
+  // Both the kill marker on the timeline and this banner must use the slot.failed timestamp.
+  const failedTs = banner.ts - (banner.detectionMs ?? 0);
+  const elapsedMs =
+    runStartTime && failedTs
+      ? Math.max(0, failedTs - runStartTime)
+      : failedTs
+        ? failedTs % 10000000
+        : 13000;
+  const failTime = formatTime(elapsedMs);
 
   let whyText = "";
   if (banner.selection.provenance === "standby") {
