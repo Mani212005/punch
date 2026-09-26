@@ -17,8 +17,23 @@ function formatRoleTitle(role: string): string {
     .join(" ");
 }
 
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+function costText(usd: number): string {
+  return `$${usd.toFixed(2)}`;
+}
+
+function turnsAndCost(slot: SlotLaneState): string {
+  const parts: string[] = [];
+  if (slot.turns > 0) parts.push(plural(slot.turns, "turn"));
+  if (slot.costUsd > 0) parts.push(costText(slot.costUsd));
+  return parts.join(" · ");
+}
+
 export default function SlotsTile({ run, slots, planSubtasksCount }: SlotsTileProps) {
-  const orchestratorAgentId = run.orchestratorAgentId || "opus-5-5";
+  const orchestratorAgentId = run.orchestratorAgentId;
   const isRunActive = run.status === "running";
   const isRunCompleted = run.status === "completed";
 
@@ -39,21 +54,19 @@ export default function SlotsTile({ run, slots, planSubtasksCount }: SlotsTilePr
     <div className="bz-tile c3 r2" style={{ gap: "8px" }}>
       <div className="bz-label">slots</div>
 
-      {/* Orchestrator Card */}
-      <div className={`bz-agent ${isRunCompleted ? "done" : isRunActive ? "running" : ""}`}>
-        <span className="role">Orchestrator</span>
-        <span className={`bz-chip ${isRunCompleted ? "done" : isRunActive ? "run" : "ghost"}`}>
-          {isRunCompleted ? "done" : isRunActive ? "running" : "waiting"}
-        </span>
-        <span className="who">{formatAgentFull(orchestratorAgentId)}</span>
-        <span className="meta">
-          {isRunCompleted
-            ? "run complete · 3 turns · $0.09"
-            : isRunActive
-              ? "narrating · 3 turns · $0.09"
-              : "ready"}
-        </span>
-      </div>
+      {/* Orchestrator Card (only when the trace names an orchestrator agent) */}
+      {orchestratorAgentId && (
+        <div className={`bz-agent ${isRunCompleted ? "done" : isRunActive ? "running" : ""}`}>
+          <span className="role">Orchestrator</span>
+          <span className={`bz-chip ${isRunCompleted ? "done" : isRunActive ? "run" : "ghost"}`}>
+            {isRunCompleted ? "done" : isRunActive ? "running" : "waiting"}
+          </span>
+          <span className="who">{formatAgentFull(orchestratorAgentId)}</span>
+          <span className="meta">
+            {isRunCompleted ? "run complete" : isRunActive ? "narrating" : "ready"}
+          </span>
+        </div>
+      )}
 
       {/* Dynamic Role Cards */}
       {roleKeys.map((roleKey) => {
@@ -70,37 +83,33 @@ export default function SlotsTile({ run, slots, planSubtasksCount }: SlotsTilePr
         const isFailed = slot.state === "failed";
         const hasReplaced = slot.replaced && slot.replaced.length > 0;
 
-        // Determine descriptive meta text
+        // Descriptive meta text, built only from slot state - no fabricated numbers.
+        const subtask = slot.currentSubtaskId;
+        const tc = turnsAndCost(slot);
+        const withSub = (base: string) => (subtask ? `${subtask} · ${base}` : base);
         let metaText = "ready";
         if (roleKey === "planner") {
           metaText = isDone
-            ? `${planSubtasksCount || 7} subtasks · 1 turn · $0.11`
+            ? [`${planSubtasksCount} subtasks`, tc].filter(Boolean).join(" · ")
             : isRunning
               ? "decomposing DAG"
               : "waiting";
         } else if (roleKey === "researcher") {
           metaText = hasReplaced
-            ? "s3 · resumed with 5 cached results · heartbeat 0.4s"
-            : isRunning
-              ? `${slot.currentSubtaskId || "s1"} · ${slot.turns || 1} turns · $${(slot.costUsd || 0.05).toFixed(2)}`
-              : isDone
-                ? "s1-s4 done · 8 turns · $0.32"
-                : "ready";
+            ? withSub(["resumed", tc].filter(Boolean).join(" · "))
+            : isRunning || isDone
+              ? withSub(tc || (isDone ? "done" : "started"))
+              : "ready";
         } else if (roleKey === "executor") {
-          metaText = isDone
-            ? "draft report & issue filed · 2 turns · $0.21"
-            : isRunning
-              ? "drafting remediation report"
-              : "waits on s4";
+          metaText =
+            isRunning || isDone
+              ? withSub([isDone ? "done" : "working", tc].filter(Boolean).join(" · "))
+              : "waiting";
         } else if (roleKey === "critic") {
-          metaText = isDone
-            ? "evidence checked · verdict accepted"
-            : isRunning
-              ? "verifying claims against citations"
-              : "distinct from executor";
+          metaText = isDone ? "review complete" : isRunning ? "reviewing" : "waiting";
         } else {
           metaText = isRunning
-            ? `${slot.currentSubtaskId ? `${slot.currentSubtaskId} · ` : ""}${slot.turns || 0} turns`
+            ? withSub(tc || "started")
             : isDone
               ? "completed"
               : isFailed
@@ -171,13 +180,11 @@ export default function SlotsTile({ run, slots, planSubtasksCount }: SlotsTilePr
                   </span>
                   <span className="bz-chip fail">{rep.reason.kind || "failed"}</span>
                   <span className="who">
-                    {rep.reason.detail || rep.reason.kind} · {rep.turns || 6} turns · $
-                    {(rep.costUsd || 0.27).toFixed(2)}
+                    {rep.reason.detail || rep.reason.kind} · {plural(rep.turns, "turn")} ·{" "}
+                    {costText(rep.costUsd)}
                   </span>
                   <span className="meta">
-                    {rep.subtaskId
-                      ? `s1, s2 done · ${rep.subtaskId} handed over`
-                      : "subtask handed over"}
+                    {rep.subtaskId ? `${rep.subtaskId} handed over` : "subtask handed over"}
                   </span>
                 </div>
               ))}

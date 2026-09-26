@@ -40,6 +40,7 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
 
   const {
     state,
+    events,
     currentIndex,
     totalEvents,
     isPlaying,
@@ -128,7 +129,11 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
           />
 
           {/* Agent Logs: 4 cols, 2 rows */}
-          <AgentLogsTile entries={state.logs.entries} byRole={state.logs.byRole} />
+          <AgentLogsTile
+            entries={state.logs.entries}
+            byRole={state.logs.byRole}
+            runStartTime={state.run.startTime}
+          />
 
           {/* Routing Card: 5 cols (Row 4, directly under Plan Graph) */}
           <RoutingCardTile routingMap={state.routing} slots={state.slots} mode={state.run.mode} />
@@ -143,6 +148,9 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
             markers={state.timeline.markers}
             slots={state.slots}
             run={state.run}
+            budgetMsMax={state.budget.ms.max}
+            nowTs={currentIndex >= 0 ? events[currentIndex]?.ts : undefined}
+            takeover={state.takeover.active}
             onTogglePlay={togglePlay}
             onStepForward={stepForward}
             onStepBackward={stepBackward}

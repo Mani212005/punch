@@ -1,7 +1,7 @@
 import React from "react";
 import type { Subtask } from "@punch/shared";
 import type { PlanGraphState, SlotLaneState, TakeoverBannerState } from "@/lib/trace/types";
-import { formatTime } from "./formatters";
+import { formatAgentDisplayName, formatTime } from "./formatters";
 
 interface PlanGraphTileProps {
   plan: PlanGraphState;
@@ -200,7 +200,14 @@ export default function PlanGraphTile({
             const isFailed = st.status === "failed" || st.status === "degraded";
             const isPending = !isDone && !isRunning && !isFailed;
 
-            const isNodeTakenOver = st.id === "s3" && isTakeoverHappened;
+            // Agent currently (or most recently) working this subtask, from slot state.
+            const workerAgentId = Object.values(slots).find(
+              (s) => s.currentSubtaskId === st.id,
+            )?.agentId;
+            const workerName = workerAgentId ? formatAgentDisplayName(workerAgentId) : null;
+
+            const isNodeTakenOver =
+              (activeTakeover?.subtaskId ?? (isTakeoverHappened ? "s3" : undefined)) === st.id;
             const isApprovalNode = st.id === "s7" && isPending;
 
             const nodeClass = isDone ? "node done" : isRunning ? "node run" : "node wait";
@@ -208,26 +215,16 @@ export default function PlanGraphTile({
             const textClass = isDone || isRunning ? "inv" : "";
             const metaClass = isDone || isRunning ? "inv" : "t-muted";
 
-            // Node subtext
+            // Node subtext, derived from subtask status, role hint, and slot state.
             let metaText = "";
             if (isDone) {
-              if (st.id === "s1") metaText = "done · Opus 5";
-              else if (st.id === "s2") metaText = "done · 1 retry";
-              else if (st.id === "s3") metaText = isNodeTakenOver ? "done · Gemini" : "done";
-              else if (st.id === "s4") metaText = "done · researcher";
-              else if (st.id === "s5") metaText = "done · executor";
-              else if (st.id === "s6") metaText = "done · critic";
-              else if (st.id === "s7") metaText = "done · issue #42";
-              else metaText = "done";
+              metaText = workerName ? `done · ${workerName}` : "done";
             } else if (isRunning) {
-              if (st.id === "s3") metaText = "running · Gemini";
-              else metaText = `running · ${st.roleHint || "agent"}`;
+              metaText = `running · ${workerName ?? st.roleHint ?? "agent"}`;
+            } else if (isFailed) {
+              metaText = `failed · ${workerName ?? st.roleHint ?? "agent"}`;
             } else {
-              if (st.id === "s7") metaText = "needs approval";
-              else if (st.id === "s4") metaText = "pending · researcher";
-              else if (st.id === "s5") metaText = "executor";
-              else if (st.id === "s6") metaText = "critic";
-              else metaText = st.roleHint || "pending";
+              metaText = st.roleHint || "pending";
             }
 
             const centerX = layout.x + layout.width / 2;
@@ -275,8 +272,8 @@ export default function PlanGraphTile({
                   {metaText}
                 </text>
 
-                {/* Taken-over caption for s3 */}
-                {isNodeTakenOver && st.id === "s3" && (
+                {/* Taken-over caption under the replaced subtask node */}
+                {isNodeTakenOver && (
                   <text
                     x={centerX}
                     y={layout.y + layout.height + 18}
@@ -284,7 +281,8 @@ export default function PlanGraphTile({
                     textAnchor="middle"
                     className="t-muted"
                   >
-                    was Opus 5 · taken over {takenOverTime}
+                    was {formatAgentDisplayName(activeTakeover?.failedAgentId)} · taken over{" "}
+                    {takenOverTime}
                   </text>
                 )}
               </g>

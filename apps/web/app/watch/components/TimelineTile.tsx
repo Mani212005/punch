@@ -1,5 +1,11 @@
 import React from "react";
-import type { BoardRunState, SlotLaneState, TimelineMarker, TimelineSpan } from "@/lib/trace/types";
+import type {
+  BoardRunState,
+  SlotLaneState,
+  TakeoverBannerState,
+  TimelineMarker,
+  TimelineSpan,
+} from "@/lib/trace/types";
 import { formatTime } from "./formatters";
 
 interface TimelineTileProps {
@@ -11,6 +17,9 @@ interface TimelineTileProps {
   markers?: TimelineMarker[];
   slots?: Record<string, SlotLaneState>;
   run?: BoardRunState;
+  budgetMsMax?: number;
+  nowTs?: number;
+  takeover?: TakeoverBannerState | null;
   onTogglePlay: () => void;
   onStepForward: () => void;
   onStepBackward: () => void;
@@ -18,14 +27,33 @@ interface TimelineTileProps {
   onSetSpeed: (speed: 1 | 4) => void;
 }
 
+const PLOT_X = 90;
+const PLOT_W = 900;
+const VIEW_W = 1000;
+const ROW_H = 30;
+const TOP_PAD = 14;
+const AXIS_PAD = 34;
+
+const PREFERRED_ROW_ORDER = ["planner", "researcher", "executor", "critic"];
+
+function spanFill(status: TimelineSpan["status"]): string {
+  if (status === "running") return "#1F48C5";
+  if (status === "failed") return "#E4321B";
+  return "#121212";
+}
+
 export default function TimelineTile({
   currentIndex,
   totalEvents,
   isPlaying,
   speed,
+  spans = [],
   markers = [],
   slots = {},
   run,
+  budgetMsMax,
+  nowTs,
+  takeover,
   onTogglePlay,
   onStepForward,
   onStepBackward,
@@ -34,40 +62,67 @@ export default function TimelineTile({
 }: TimelineTileProps) {
   const currentEventNum = totalEvents > 0 ? Math.max(0, currentIndex + 1) : 0;
 
-  // Calculate now cursor X position (from 90 to 768 / 990)
-  const nowRatio = totalEvents > 1 ? Math.min(1, Math.max(0, currentIndex / (totalEvents - 1))) : 1;
-  const nowX = Math.round(90 + nowRatio * (768 - 90));
+  // Rows: preferred role order first, then any other roles seen in spans or slots.
+  const rowRoles: string[] = [];
+  PREFERRED_ROW_ORDER.forEach((r) => {
+    if (spans.some((s) => s.role === r) || slots[r]) rowRoles.push(r);
+  });
+  const seen = new Set(rowRoles);
+  spans.forEach((s) => {
+    if (!seen.has(s.role)) {
+      seen.add(s.role);
+      rowRoles.push(s.role);
+    }
+  });
+  Object.keys(slots).forEach((r) => {
+    if (!seen.has(r)) {
+      seen.add(r);
+      rowRoles.push(r);
+    }
+  });
 
-  // Current elapsed time display
-  const currentSeconds = Math.round(nowRatio * 192); // ~ 03:12
-  const nowTimeStr = formatTime(currentSeconds * 1000);
+  // Time domain: full run so the frame is stable while scrubbing.
+  const spanTimes = spans.flatMap((s) => [s.startTs, s.endTs ?? s.startTs]);
+  const markerTimes = markers.map((m) => m.ts);
+  const t0 = run?.startTime ?? Math.min(nowTs ?? Infinity, ...spanTimes, ...markerTimes);
+  const domainEnd = Math.max(
+    run?.endTime ?? -Infinity,
+    nowTs ?? -Infinity,
+    ...spanTimes,
+    ...markerTimes,
+  );
+  const safeT0 = Number.isFinite(t0) ? (t0 as number) : 0;
+  const safeT1 = Number.isFinite(domainEnd) && domainEnd > safeT0 ? domainEnd : safeT0 + 1000;
+  const x = (ts: number) => PLOT_X + (Math.max(0, ts - safeT0) / (safeT1 - safeT0)) * PLOT_W;
 
-  // Dynamic slot states for bars
-  const isExecutorDone = slots.executor?.state === "completed" || run?.status === "completed";
-  const isExecutorRunning = slots.executor?.state === "running";
+  const viewH = TOP_PAD + rowRoles.length * ROW_H + AXIS_PAD;
+  const axisY = TOP_PAD + rowRoles.length * ROW_H;
 
-  const isCriticDone = slots.critic?.state === "completed" || run?.status === "completed";
-  const isCriticRunning = slots.critic?.state === "running";
+  // Now cursor: event timestamp when known, otherwise index ratio.
+  const nowX =
+    nowTs !== undefined && Number.isFinite(nowTs)
+      ? x(nowTs)
+      : PLOT_X +
+        (totalEvents > 1 ? Math.min(1, Math.max(0, currentIndex / (totalEvents - 1))) : 1) * PLOT_W;
+  const nowElapsed = nowTs !== undefined ? Math.max(0, nowTs - safeT0) : 0;
+  const nowTimeStr = formatTime(nowElapsed);
 
-  // Dynamic kill marker time
+  // Kill / takeover markers share the slot.failed timestamp with the banner.
   const killMarker = markers.find((m) => m.type === "kill");
-  const killElapsedMs =
-    killMarker && run?.startTime
-      ? Math.max(0, killMarker.ts - run.startTime)
-      : killMarker?.ts
-        ? killMarker.ts % 10000000
-        : 13000;
+  const takeoverMarker = markers.find((m) => m.type === "takeover");
+  const killElapsedMs = killMarker ? Math.max(0, killMarker.ts - safeT0) : 0;
   const killTimeStr = formatTime(killElapsedMs);
+  const gapMs =
+    takeover?.detectionMs ??
+    (killMarker && takeoverMarker ? Math.max(0, takeoverMarker.ts - killMarker.ts) : 0);
+  const gapSec = (gapMs / 1000).toFixed(1);
+
+  const capStr = formatTime(budgetMsMax ?? safeT1 - safeT0);
 
   return (
     <div className="bz-tile c12">
       <div className="bz-label" style={{ flexWrap: "wrap", rowGap: "8px" }}>
-        timeline
-        {totalEvents > 0 && (
-          <span className="bz-mono bz-muted" style={{ marginLeft: "8px", fontWeight: "normal" }}>
-            event {currentEventNum}/{totalEvents}
-          </span>
-        )}
+        {totalEvents > 0 ? `timeline · event ${currentEventNum} of ${totalEvents}` : "timeline"}
         <span style={{ marginLeft: "auto", display: "flex", gap: "6px", alignItems: "center" }}>
           <button
             type="button"
@@ -143,127 +198,163 @@ export default function TimelineTile({
       >
         <svg
           className="fig"
-          viewBox="0 0 1000 140"
+          viewBox={`0 0 ${VIEW_W} ${viewH}`}
           role="img"
-          aria-label={`Timeline with the kill at ${killTimeStr} and the takeover 1.8 seconds later`}
+          aria-label={`Timeline with the kill at ${killTimeStr} and the takeover ${gapSec} seconds later`}
           style={{ minWidth: "680px", width: "100%", height: "auto", display: "block" }}
         >
-          {/* Planner Row */}
-          <text x="6" y="24" fontSize="10">
-            planner
-          </text>
-          <rect x="90" y="14" width="70" height="14" fill="#121212" />
+          {rowRoles.map((role, rowIdx) => {
+            const rowY = TOP_PAD + rowIdx * ROW_H;
+            const agentSpans = spans.filter((s) => s.role === role && s.type === "agent");
+            const toolSpans = spans.filter((s) => s.role === role && s.type === "tool");
+            return (
+              <g key={`row-${role}`}>
+                <text x="6" y={rowY + 16} fontSize="10">
+                  {role}
+                </text>
+                {agentSpans.map((span) => {
+                  const barX = x(span.startTs);
+                  const barEnd = x(span.endTs ?? nowTs ?? span.startTs);
+                  const barW = Math.max(3, barEnd - barX);
+                  const label =
+                    span.label || `${span.agentId}${span.subtaskId ? ` · ${span.subtaskId}` : ""}`;
+                  return (
+                    <g key={span.id}>
+                      <rect
+                        x={barX}
+                        y={rowY}
+                        width={barW}
+                        height="14"
+                        fill={spanFill(span.status)}
+                      />
+                      {barW > 64 && (
+                        <text x={barX + 6} y={rowY + 11} fontSize="9" className="inv">
+                          {label}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+                {toolSpans.map((span) => {
+                  const tickX = x(span.startTs);
+                  return (
+                    <rect
+                      key={span.id}
+                      x={tickX}
+                      y={rowY + 18}
+                      width={Math.max(2, x(span.endTs ?? span.startTs) - tickX)}
+                      height="4"
+                      fill="#121212"
+                      opacity="0.55"
+                    >
+                      <title>{span.label}</title>
+                    </rect>
+                  );
+                })}
+              </g>
+            );
+          })}
 
-          {/* Researcher Row */}
-          <text x="6" y="50" fontSize="10">
-            researcher
-          </text>
-          {/* Opus 5 Predecessor Bar */}
-          <rect x="165" y="40" width="360" height="14" fill="#121212" />
-          <text x="171" y="51" fontSize="9" className="inv">
-            Opus 5 · s1 s2 s3
-          </text>
-
-          {/* Kill Marker (6px red bar) */}
-          <rect x="525" y="40" width="6" height="14" fill="#E4321B" />
-
-          {/* Gemini Flash Replacement Bar */}
-          <rect x="548" y="40" width="220" height="14" fill="#1F48C5" />
-          <text x="554" y="51" fontSize="9" className="inv">
-            Gemini Flash · s3 resumed
-          </text>
-
-          {/* Detection Gap Red Hairline & Duration */}
-          <line x1="531" y1="62" x2="548" y2="62" stroke="#E4321B" strokeWidth="2" />
-          <text x="540" y="75" fontSize="9" textAnchor="middle" className="t-red">
-            1.8s
-          </text>
-
-          {/* Executor Row */}
-          <text x="6" y="96" fontSize="10">
-            executor
-          </text>
-          {isExecutorDone ? (
-            <>
-              <rect x="770" y="86" width="120" height="14" fill="#121212" />
-              <text x="776" y="97" fontSize="9" className="inv">
-                Opus 5.5 · s5 s7
-              </text>
-            </>
-          ) : isExecutorRunning ? (
-            <>
-              <rect x="770" y="86" width="120" height="14" fill="#1F48C5" />
-              <text x="776" y="97" fontSize="9" className="inv">
-                Opus 5.5 · s5
-              </text>
-            </>
-          ) : (
-            <rect
-              x="770"
-              y="86"
-              width="120"
-              height="14"
-              fill="none"
-              stroke="#A39E93"
-              strokeWidth="2"
-              strokeDasharray="4 3"
+          {/* Kill marker: red bar at the slot.failed timestamp */}
+          {killMarker && (
+            <line
+              x1={x(killMarker.ts)}
+              y1={TOP_PAD - 6}
+              x2={x(killMarker.ts)}
+              y2={axisY}
+              stroke="#E4321B"
+              strokeWidth="4"
             />
           )}
 
-          {/* Critic Row */}
-          <text x="6" y="122" fontSize="10">
-            critic
-          </text>
-          {isCriticDone ? (
-            <>
-              <rect x="895" y="112" width="90" height="14" fill="#121212" />
-              <text x="901" y="123" fontSize="9" className="inv">
-                Grok · s6
-              </text>
-            </>
-          ) : isCriticRunning ? (
-            <>
-              <rect x="895" y="112" width="90" height="14" fill="#1F48C5" />
-              <text x="901" y="123" fontSize="9" className="inv">
-                Grok · review
-              </text>
-            </>
-          ) : (
-            <rect
-              x="895"
-              y="112"
-              width="90"
-              height="14"
-              fill="none"
-              stroke="#A39E93"
-              strokeWidth="2"
-              strokeDasharray="4 3"
+          {/* Takeover marker: yellow bar at the slot.replacing timestamp */}
+          {takeoverMarker && (
+            <line
+              x1={x(takeoverMarker.ts)}
+              y1={TOP_PAD - 6}
+              x2={x(takeoverMarker.ts)}
+              y2={axisY}
+              stroke="#F5C518"
+              strokeWidth="3"
             />
           )}
+
+          {/* Detection-gap hairline between kill and takeover */}
+          {killMarker && takeoverMarker && (
+            <g>
+              <line
+                x1={x(killMarker.ts)}
+                y1={axisY + 12}
+                x2={x(takeoverMarker.ts)}
+                y2={axisY + 12}
+                stroke="#E4321B"
+                strokeWidth="2"
+              />
+              <text
+                x={(x(killMarker.ts) + x(takeoverMarker.ts)) / 2}
+                y={axisY + 25}
+                fontSize="9"
+                textAnchor="middle"
+                className="t-red"
+              >
+                {gapSec}s
+              </text>
+            </g>
+          )}
+
+          {/* Finish marker */}
+          {markers
+            .filter((m) => m.type === "finish")
+            .map((m) => (
+              <line
+                key={m.id}
+                x1={x(m.ts)}
+                y1={TOP_PAD - 6}
+                x2={x(m.ts)}
+                y2={axisY}
+                stroke="#1F48C5"
+                strokeWidth="2"
+              />
+            ))}
 
           {/* Baseline Axis */}
-          <line x1="90" y1="132" x2="990" y2="132" stroke="#121212" strokeWidth="2" />
+          <line
+            x1={PLOT_X}
+            y1={axisY}
+            x2={PLOT_X + PLOT_W}
+            y2={axisY}
+            stroke="#121212"
+            strokeWidth="2"
+          />
 
           {/* Time Axis Labels */}
-          <text x="90" y="139" fontSize="8" className="t-muted">
+          <text x={PLOT_X} y={axisY + 9} fontSize="8" className="t-muted">
             00:00
           </text>
-          <text x="530" y="139" fontSize="8" className="t-red" textAnchor="middle">
-            {killTimeStr} kill
-          </text>
-          <text x={nowX} y="139" fontSize="8" className="t-blue" textAnchor="middle">
+          {killMarker && (
+            <text
+              x={x(killMarker.ts)}
+              y={axisY + 9}
+              fontSize="8"
+              className="t-red"
+              textAnchor="middle"
+            >
+              {killTimeStr} kill
+            </text>
+          )}
+          <text x={nowX} y={axisY + 9} fontSize="8" className="t-blue" textAnchor="middle">
             now {nowTimeStr}
           </text>
-          <text x="990" y="139" fontSize="8" className="t-muted" textAnchor="end">
-            08:00 cap
+          <text x={PLOT_X + PLOT_W} y={axisY + 9} fontSize="8" className="t-muted" textAnchor="end">
+            {capStr} cap
           </text>
 
           {/* Vertical Blue "Now" Cursor */}
           <line
             x1={nowX}
-            y1="6"
+            y1={TOP_PAD - 6}
             x2={nowX}
-            y2="132"
+            y2={axisY}
             stroke="#1F48C5"
             strokeWidth="2"
             strokeDasharray="5 4"

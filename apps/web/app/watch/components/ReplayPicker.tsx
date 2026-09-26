@@ -13,8 +13,6 @@ interface ReplayPickerProps {
 const COMMITTED_TRACES = [
   { id: "takeover", name: "Takeover Run" },
   { id: "clean", name: "Clean Run" },
-  { id: "chaos", name: "Chaos Run" },
-  { id: "denial", name: "Denial Run" },
 ];
 
 export default function ReplayPicker({
@@ -87,7 +85,7 @@ export default function ReplayPicker({
                 alignItems: "center",
               }}
             >
-              Load Trace File
+              Load Local File
               <input
                 type="file"
                 accept=".jsonl,.json"

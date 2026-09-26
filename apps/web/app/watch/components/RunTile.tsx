@@ -21,9 +21,8 @@ export default function RunTile({ run, activeTakeover, onStop }: RunTileProps) {
           ? "fail"
           : "wait";
 
-  const repoDisplay = run.repoUrl
-    ? run.repoUrl.replace(/^https?:\/\//, "")
-    : "github.com/acme/webapp";
+  const repoUrl = run.repoUrl;
+  const repoDisplay = repoUrl ? repoUrl.replace(/^https?:\/\//, "") : "github.com/acme/webapp";
 
   return (
     <div
@@ -43,7 +42,13 @@ export default function RunTile({ run, activeTakeover, onStop }: RunTileProps) {
         </div>
       </div>
       <span className="bz-chip">{run.mode || "auto"}</span>
-      <span className="bz-mono">{repoDisplay}</span>
+      {repoUrl ? (
+        <a className="bz-mono" href={repoUrl} target="_blank" rel="noreferrer">
+          {repoUrl}
+        </a>
+      ) : (
+        <span className="bz-mono">{repoDisplay}</span>
+      )}
 
       {isTakeoverActive ? (
         <span className="bz-chip warn" style={{ marginLeft: "auto" }}>

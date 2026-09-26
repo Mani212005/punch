@@ -5,11 +5,12 @@ import { formatAgentDisplayName, formatTimeWithFraction } from "./formatters";
 interface AgentLogsTileProps {
   entries: LogEntry[];
   byRole: Record<string, LogEntry[]>;
+  runStartTime?: number;
 }
 
 const STANDARD_ROLES = ["orchestrator", "planner", "researcher", "executor", "critic"];
 
-export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
+export default function AgentLogsTile({ entries, byRole, runStartTime }: AgentLogsTileProps) {
   const [selectedTab, setSelectedTab] = useState<string>("researcher");
   const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -140,15 +141,7 @@ export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
               return (
                 <div key={`log-${entry.seq}-${idx}`}>
                   <span className="info">write</span> {entry.blackboard.key}{" "}
-                  <span className="dim">
-                    {entry.blackboard.key.includes("inventory")
-                      ? "43 packages"
-                      : entry.blackboard.key.includes("vulns")
-                        ? "6 keys"
-                        : entry.blackboard.key.includes("versions")
-                          ? "4 packages"
-                          : "entry written"}
-                  </span>
+                  <span className="dim">entry written</span>
                 </div>
               );
             }
@@ -157,11 +150,17 @@ export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
               entry.kind === "slot.failed" ||
               (entry.type === "slot" && entry.slotInfo?.state === "failed")
             ) {
-              const failTime = entry.ts ? formatTimeWithFraction(entry.ts % 10000000) : "03:07.2";
+              // Same slot.failed timestamp the banner and kill marker use, run-relative.
+              const failElapsed =
+                runStartTime && entry.ts
+                  ? Math.max(0, entry.ts - runStartTime)
+                  : entry.ts
+                    ? entry.ts % 10000000
+                    : 13000;
+              const failTime = formatTimeWithFraction(failElapsed);
               return (
                 <div key={`log-${entry.seq}-${idx}`} className="err">
-                  x slot.failed operator_kill &ldquo;
-                  {entry.slotInfo?.detail || "killed from console"}&rdquo; {failTime}
+                  x {entry.text ?? "slot failed"} {failTime}
                 </div>
               );
             }
@@ -172,7 +171,7 @@ export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
             ) {
               return (
                 <div key={`log-${entry.seq}-${idx}`} className="warn">
-                  &gt; slot.replacing standby #1 Gemini Flash · handoff 5 cached
+                  &gt; {entry.text ?? "slot replacing"}
                 </div>
               );
             }

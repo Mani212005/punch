@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import type { RoleRoutingState, SlotLaneState } from "@/lib/trace/types";
 import { formatAgentDisplayName } from "./formatters";
 
@@ -16,16 +16,21 @@ export default function RoutingCardTile({
   // Researcher routing is primary for the takeover board, or fallback to first available
   const routing = routingMap["researcher"] ?? routingMap["planner"] ?? Object.values(routingMap)[0];
 
-  const researcherSlot = slots.researcher;
+  const researcherSlot = slots.researcher ?? slots[routing?.role ?? ""];
   const replacedAgentIds = new Set((researcherSlot?.replaced ?? []).map((r) => r.agentId));
   const activeAgentId = researcherSlot?.agentId ?? routing?.agentId;
 
-  const probabilities = routing?.probabilities ?? [
-    { agentId: "opus-5", probability: 0.52 },
-    { agentId: "gemini-flash", probability: 0.24 },
-    { agentId: "opus-5-5", probability: 0.14 },
-    { agentId: "grok", probability: 0.1 },
-  ];
+  // Routing probabilities from the trace; when Jev only names the winner
+  // (single-candidate decisions), show the slot standby list as the options.
+  const probabilities = useMemo(() => {
+    const routed = routing?.probabilities ?? [];
+    if (routed.length >= 2) return routed;
+    const seen = new Set(routed.map((p) => p.agentId));
+    const standbyRows = (researcherSlot?.standby ?? [])
+      .filter((s) => !seen.has(s.agentId))
+      .map((s) => ({ agentId: s.agentId, probability: s.probability }));
+    return [...routed, ...standbyRows];
+  }, [routing, researcherSlot]);
 
   const difficulty = routing?.difficulty ?? "moderate";
   const confidence = routing?.confidence ? routing.confidence.toFixed(2) : "0.46";

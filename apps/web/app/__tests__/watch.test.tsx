@@ -44,11 +44,10 @@ describe("Watch Board Replay Page", () => {
     try {
       render(<WatchBoard initialTraceId="takeover" />);
 
-      // Top control bar and Replay Picker
+      // Top control bar
       expect(screen.getByText(/trace source:/i)).toBeInTheDocument();
       expect(screen.getByText(/Takeover Run/i)).toBeInTheDocument();
-      expect(screen.getByText(/Load Trace File/i)).toBeInTheDocument();
-      expect(screen.getByText(/Connect Live SSE/i)).toBeInTheDocument();
+      expect(screen.getByText(/Load Local File/i)).toBeInTheDocument();
 
       // Board sections
       expect(screen.getByText("slots")).toBeInTheDocument();
@@ -57,20 +56,25 @@ describe("Watch Board Replay Page", () => {
 
       // Wait for events to load and render board state
       await waitFor(() => {
-        expect(screen.getByText("2026-09-26-1418")).toBeInTheDocument();
+        expect(screen.getByText("2026-09-26-takeover")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("github.com/acme/webapp")).toBeInTheDocument();
-      expect(screen.getByText(/Researcher slot: Opus 5 failed/i)).toBeInTheDocument();
-      expect(screen.getByText("timeline")).toBeInTheDocument();
-      expect(screen.getByText("00:13 kill")).toBeInTheDocument();
-      expect(screen.getByText("08:00 cap")).toBeInTheDocument();
+      expect(screen.getByText("https://github.com/expressjs/express")).toBeInTheDocument();
+      expect(screen.getByText(/RESEARCHER slot:/i)).toBeInTheDocument();
+      expect(screen.getByText(/plan graph · 4 subtasks/i)).toBeInTheDocument();
+      expect(screen.getByText(/timeline · event 90 of 90/i)).toBeInTheDocument();
+
+      // Kill marker and banner share the slot.failed timestamp (run-relative)
+      expect(screen.getByText("00:01 kill")).toBeInTheDocument();
+      expect(screen.getByText("02:00 cap")).toBeInTheDocument();
 
       // Replaced agent stack
-      expect(screen.getByText(/replaced: Opus 5/i)).toBeInTheDocument();
+      expect(screen.getByText(/replaced: Opus/i)).toBeInTheDocument();
 
       // Node click opens subtask inspector modal
-      const s1Button = screen.getByRole("button", { name: /Inspect subtask s1 inventory/i });
+      const s1Button = screen.getByRole("button", {
+        name: /Inspect subtask s1 Inventory dependencies/i,
+      });
       expect(s1Button).toBeInTheDocument();
       fireEvent.click(s1Button);
 
@@ -78,11 +82,10 @@ describe("Watch Board Replay Page", () => {
       await waitFor(() => {
         const dialog = screen.getByRole("dialog");
         expect(dialog).toBeInTheDocument();
-        expect(within(dialog).getByText(/s1 · inventory/i)).toBeInTheDocument();
+        expect(within(dialog).getByText(/s1 · Inventory dependencies/i)).toBeInTheDocument();
         expect(
-          within(dialog).getByText(/Fetch package manifest and lockfile from repo/i),
+          within(dialog).getByText(/Read package.json and package-lock.json/i),
         ).toBeInTheDocument();
-        expect(within(dialog).getAllByText(/inventory.dependencies/i).length).toBeGreaterThan(0);
       });
 
       // Close inspector modal
@@ -91,7 +94,7 @@ describe("Watch Board Replay Page", () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText(/Fetch package manifest and lockfile from repo/i),
+          screen.queryByText(/Read package.json and package-lock.json/i),
         ).not.toBeInTheDocument();
       });
     } finally {
