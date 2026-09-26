@@ -7,7 +7,10 @@ export const DEFAULT_MAX_REJECTIONS = 2;
 export interface ReviewLoopOptions {
   /** Produces a draft; receives the critic's findings and the rejected draft for a revision turn. */
   produce: (revision?: Revision) => Promise<Draft>;
-  review: (draft: Draft, attempt: number) => Promise<CriticVerdict>;
+  review: (
+    draft: Draft,
+    attempt: number,
+  ) => Promise<CriticVerdict | { verdict: "accepted" | "rejected"; findings: Finding[] }>;
   /** Writes the accepted draft to the blackboard. Nothing rejected is ever written. */
   commit: (draft: Draft) => BlackboardEntry;
   /** Critic rejections per subtask before the slot is `rejected`. Default 2. */

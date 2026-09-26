@@ -12,7 +12,12 @@ export const Finding = z.object({
   evidenceRef: z.string().optional(),
   /** A rejection may ask for new work; the run loop hands it to the planner as a targeted replan. */
   requestedTask: z
-    .object({ title: z.string(), description: z.string(), roleHint: SlotRole.optional() })
+    .object({
+      title: z.string(),
+      description: z.string(),
+      roleHint: SlotRole.optional(),
+      claimIds: z.array(z.string()).default([]),
+    })
     .optional(),
 });
 export type Finding = z.infer<typeof Finding>;
