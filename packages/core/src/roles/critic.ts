@@ -154,7 +154,8 @@ export function defaultTaskForChallenge(
       return {
         role: "reachability",
         title: "Reachability analysis",
-        description: reason || "Perform call-site analysis and import graph search for affected symbols",
+        description:
+          reason || "Perform call-site analysis and import graph search for affected symbols",
         claimIds,
       };
     case "package_present":
@@ -199,25 +200,50 @@ export function classifyChallengeForProblem(
   problemText: string,
 ): CriticChallengeId {
   const combined = `${claimText} ${problemText}`.toLowerCase();
-  if (combined.includes("reachable") || combined.includes("call-site") || combined.includes("entrypoint")) {
+  if (
+    combined.includes("reachable") ||
+    combined.includes("call-site") ||
+    combined.includes("entrypoint")
+  ) {
     return "code_reachable";
   }
   if (combined.includes("function") || combined.includes("import") || combined.includes("used")) {
     return "functionality_used";
   }
-  if (combined.includes("version") || combined.includes("patched") || combined.includes("registry")) {
+  if (
+    combined.includes("version") ||
+    combined.includes("patched") ||
+    combined.includes("registry")
+  ) {
     return "patched_version_real";
   }
-  if (combined.includes("package") || combined.includes("install") || combined.includes("present") || combined.includes("manifest")) {
+  if (
+    combined.includes("package") ||
+    combined.includes("install") ||
+    combined.includes("present") ||
+    combined.includes("manifest")
+  ) {
     return "package_present";
   }
-  if (combined.includes("contradict") || combined.includes("second source") || combined.includes("advisory")) {
+  if (
+    combined.includes("contradict") ||
+    combined.includes("second source") ||
+    combined.includes("advisory")
+  ) {
     return "sources_contradict";
   }
-  if (combined.includes("stale") || combined.includes("current") || combined.includes("superseded")) {
+  if (
+    combined.includes("stale") ||
+    combined.includes("current") ||
+    combined.includes("superseded")
+  ) {
     return "evidence_current";
   }
-  if (combined.includes("upgrade") || combined.includes("compat") || combined.includes("breaking")) {
+  if (
+    combined.includes("upgrade") ||
+    combined.includes("compat") ||
+    combined.includes("breaking")
+  ) {
     return "upgrade_compatible";
   }
   if (combined.includes("mitigat")) {
@@ -463,7 +489,8 @@ export async function reviewDraft(
   let verdict: CriticVerdict;
 
   if (rejected) {
-    const firstFailed = allChallenges.find((c) => c.outcome === "failed")?.challenge ?? "unsupported_assumption";
+    const firstFailed =
+      allChallenges.find((c) => c.outcome === "failed")?.challenge ?? "unsupported_assumption";
     const blockerReason = findings.find((f) => f.severity === "blocker")?.problem;
     const reason =
       own.reason ||
@@ -481,7 +508,8 @@ export async function reviewDraft(
       own.newTask ||
       (explicitRequestedTask
         ? {
-            role: explicitRequestedTask.roleHint ?? defaultTaskForChallenge(firstFailed, reason).role,
+            role:
+              explicitRequestedTask.roleHint ?? defaultTaskForChallenge(firstFailed, reason).role,
             title: explicitRequestedTask.title,
             description: explicitRequestedTask.description,
             claimIds: explicitRequestedTask.claimIds ?? [],
@@ -501,8 +529,7 @@ export async function reviewDraft(
       }
     }
 
-    const newTask: NewTaskRequest =
-      explicitNewTask ?? defaultTaskForChallenge(firstFailed, reason);
+    const newTask: NewTaskRequest = explicitNewTask ?? defaultTaskForChallenge(firstFailed, reason);
 
     verdict = {
       decision: "REJECTED",

@@ -260,9 +260,7 @@ describe("Hallucination Detection", () => {
     const board = new Blackboard();
     const events: TraceEventInput[] = [];
 
-    const critic = scriptedAdapter([
-      () => result({ decision: "ACCEPTED", findings: [] }),
-    ]);
+    const critic = scriptedAdapter([() => result({ decision: "ACCEPTED", findings: [] })]);
 
     const draft: Draft = {
       value: { function: "foo.parse" },
