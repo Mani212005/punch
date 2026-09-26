@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/copy-traces.js",
+    "prebuild": "pnpm --filter @punch/shared build && node scripts/copy-traces.js",
     "build": "pnpm prebuild && next build",
     "start": "next start",
     "lint": "next lint",

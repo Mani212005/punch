@@ -1,7 +1,13 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import WatchBoard from "../watch/WatchBoard";
+import {
+  createInitialBoardState,
+  DeterministicReplayEngine,
+  parseJsonlEvents,
+  traceReducer,
+} from "@/lib/trace";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,7 +31,7 @@ function getTakeoverTracePath(): string {
 }
 
 describe("Watch Board Replay Page", () => {
-  it("renders WatchBoard layout and controls", async () => {
+  it("renders WatchBoard layout and components matching DESIGN.md and mockups.html", async () => {
     const tracePath = getTakeoverTracePath();
     const traceContent = fs.readFileSync(tracePath, "utf8");
 
@@ -57,8 +63,76 @@ describe("Watch Board Replay Page", () => {
       expect(screen.getByText(/RESEARCHER slot:/i)).toBeInTheDocument();
       expect(screen.getByText(/plan graph · 4 subtasks/i)).toBeInTheDocument();
       expect(screen.getByText(/timeline · event 90 of 90/i)).toBeInTheDocument();
+
+      // Kill marker and banner share the slot.failed timestamp (run-relative)
+      expect(screen.getByText("00:01 kill")).toBeInTheDocument();
+      expect(screen.getByText("02:00 cap")).toBeInTheDocument();
+
+      // Replaced agent stack
+      expect(screen.getByText(/replaced: Opus/i)).toBeInTheDocument();
+
+      // Node click opens subtask inspector modal
+      const s1Button = screen.getByRole("button", {
+        name: /Inspect subtask s1 Inventory dependencies/i,
+      });
+      expect(s1Button).toBeInTheDocument();
+      fireEvent.click(s1Button);
+
+      // Verify inspector modal opened
+      await waitFor(() => {
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByText(/s1 · Inventory dependencies/i)).toBeInTheDocument();
+        expect(
+          within(dialog).getByText(/Read package.json and package-lock.json/i),
+        ).toBeInTheDocument();
+      });
+
+      // Close inspector modal
+      const closeBtn = screen.getByLabelText(/Close inspector/i);
+      fireEvent.click(closeBtn);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/Read package.json and package-lock.json/i),
+        ).not.toBeInTheDocument();
+      });
     } finally {
       global.fetch = originalFetch;
+    }
+  });
+
+  it("proves board state at event index N is identical whether fed live-style (incremental) or replayed", () => {
+    const tracePath = getTakeoverTracePath();
+    const traceContent = fs.readFileSync(tracePath, "utf8");
+    const events = parseJsonlEvents(traceContent);
+
+    expect(events.length).toBeGreaterThan(0);
+
+    const replayEngine = new DeterministicReplayEngine(events);
+
+    // Live mode simulation: feed events incrementally one by one
+    let liveState = createInitialBoardState();
+
+    for (let i = 0; i < events.length; i++) {
+      liveState = traceReducer(liveState, events[i]);
+      const replayState = replayEngine.getStateAt(i);
+
+      // Deep assert that live state and replay state are strictly equal at index i
+      expect(replayState.lastSeq).toBe(liveState.lastSeq);
+      expect(replayState.eventCount).toBe(liveState.eventCount);
+      expect(replayState.run).toEqual(liveState.run);
+      expect(replayState.budget).toEqual(liveState.budget);
+      expect(replayState.slots).toEqual(liveState.slots);
+      expect(replayState.plan).toEqual(liveState.plan);
+      expect(replayState.routing).toEqual(liveState.routing);
+      expect(replayState.takeover).toEqual(liveState.takeover);
+      expect(replayState.approvals).toEqual(liveState.approvals);
+      expect(replayState.criticVerdicts).toEqual(liveState.criticVerdicts);
+      expect(replayState.blackboard).toEqual(liveState.blackboard);
+      expect(replayState.finalReport).toEqual(liveState.finalReport);
+      expect(replayState.logs.entries.length).toBe(liveState.logs.entries.length);
+      expect(replayState).toEqual(liveState);
     }
   });
 });
