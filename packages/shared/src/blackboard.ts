@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const Evidence = z.object({
   source: z.string(),
+  /** The statement this evidence is cited for; the critic checks each one (plan.md 3.5). */
+  claim: z.string().optional(),
   url: z.string().optional(),
   quote: z.string().optional(),
   toolCallId: z.string().optional(),
