@@ -1,0 +1,8 @@
+{
+  "agents": [
+    { "id": "opus", "displayName": "Opus", "providerId": "anthropic", "model": "claude-opus-5", "costTier": "high", "roles": ["orchestrator", "planner", "researcher", "executor", "critic"], "strengths": "Deep reasoning, careful long-form writing" },
+    { "id": "sonnet", "displayName": "Sonnet", "providerId": "anthropic", "model": "claude-sonnet-5", "costTier": "medium", "roles": ["planner", "researcher", "executor", "critic"], "strengths": "Balanced, reliable tool calling" },
+    { "id": "flash", "displayName": "Gemini Flash", "providerId": "gemini", "model": "gemini-flash", "costTier": "low", "roles": ["researcher", "executor", "critic"], "strengths": "Fast and cheap, good at bulk lookups" },
+    { "id": "cc", "displayName": "Claude Code", "providerId": "claude-code", "model": "sonnet", "costTier": "medium", "roles": ["researcher", "executor"], "strengths": "Repository-aware CLI agent" }
+  ]
+}

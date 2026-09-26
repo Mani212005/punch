@@ -21,7 +21,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@punch/shared": "workspace:*"
+    "@punch/shared": "workspace:*",
+    "@typesafe-ai/sdk": "^0.6.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
