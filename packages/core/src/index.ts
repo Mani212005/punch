@@ -2,6 +2,8 @@ export const CORE_PACKAGE = "@punch/core";
 export * from "./blackboard.js";
 export * from "./budget.js";
 export * from "./trace/writer.js";
+export * from "./trace/render-md.js";
+export * from "./trace/bench.js";
 
 // Approvals
 export * from "./approval.js";
