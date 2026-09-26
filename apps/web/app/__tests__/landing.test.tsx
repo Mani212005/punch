@@ -57,7 +57,7 @@ describe("Landing Page", () => {
     expect(screen.getByText("MODEL APIS (Remote)")).toBeInTheDocument();
     expect(screen.getByText("Anthropic")).toBeInTheDocument();
     expect(screen.getAllByText("Gemini").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("OpenAI-c")).toBeInTheDocument();
+    expect(screen.getByText("OpenAI-compat")).toBeInTheDocument();
 
     expect(screen.getByText("LOCAL CLIS (Isolated Workdirs)")).toBeInTheDocument();
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
