@@ -30,8 +30,7 @@ export default function TimelineTile({
   const currentEventNum = totalEvents > 0 ? Math.max(0, currentIndex + 1) : 0;
 
   // Calculate now cursor X position (from 90 to 768 / 990)
-  const nowRatio =
-    totalEvents > 1 ? Math.min(1, Math.max(0, currentIndex / (totalEvents - 1))) : 1;
+  const nowRatio = totalEvents > 1 ? Math.min(1, Math.max(0, currentIndex / (totalEvents - 1))) : 1;
   const nowX = Math.round(90 + nowRatio * (768 - 90));
 
   // Current elapsed time display
@@ -146,14 +145,7 @@ export default function TimelineTile({
         </text>
 
         {/* Detection Gap Red Hairline & Duration */}
-        <line
-          x1="531"
-          y1="62"
-          x2="548"
-          y2="62"
-          stroke="#E4321B"
-          strokeWidth="2"
-        />
+        <line x1="531" y1="62" x2="548" y2="62" stroke="#E4321B" strokeWidth="2" />
         <text x="540" y="75" fontSize="9" textAnchor="middle" className="t-red">
           1.8s
         </text>
@@ -189,14 +181,7 @@ export default function TimelineTile({
         />
 
         {/* Baseline Axis */}
-        <line
-          x1="90"
-          y1="132"
-          x2="990"
-          y2="132"
-          stroke="#121212"
-          strokeWidth="2"
-        />
+        <line x1="90" y1="132" x2="990" y2="132" stroke="#121212" strokeWidth="2" />
 
         {/* Time Axis Labels */}
         <text x="90" y="139" fontSize="8" className="t-muted">

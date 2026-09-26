@@ -77,11 +77,7 @@ export default function SubtaskInspectorModal({
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <span className={`bz-glyph lg ${statusClass}`} />
-            <h2
-              id="subtask-modal-title"
-              className="bz-h3"
-              style={{ margin: 0, fontSize: "18px" }}
-            >
+            <h2 id="subtask-modal-title" className="bz-h3" style={{ margin: 0, fontSize: "18px" }}>
               {subtask.id} · {subtask.title}
             </h2>
             <span className={`bz-chip ${statusClass}`}>{subtask.status}</span>
@@ -210,8 +206,7 @@ export default function SubtaskInspectorModal({
                     <ul style={{ margin: "2px 0 0 16px", padding: 0, fontSize: "10px" }}>
                       {outputEntry.evidence.map((ev, i) => (
                         <li key={i} className="bz-mono">
-                          source: {ev.source}{" "}
-                          {ev.toolCallId ? `(tool: ${ev.toolCallId})` : ""}
+                          source: {ev.source} {ev.toolCallId ? `(tool: ${ev.toolCallId})` : ""}
                         </li>
                       ))}
                     </ul>
@@ -261,9 +256,7 @@ export default function SubtaskInspectorModal({
                   )}
                   {l.type === "text" && l.text && <div>&ldquo;{l.text}&rdquo;</div>}
                   {l.type === "slot" && (
-                    <div className={l.slotInfo?.state === "failed" ? "err" : "warn"}>
-                      {l.text}
-                    </div>
+                    <div className={l.slotInfo?.state === "failed" ? "err" : "warn"}>{l.text}</div>
                   )}
                 </div>
               ))

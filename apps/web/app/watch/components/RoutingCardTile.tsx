@@ -14,15 +14,10 @@ export default function RoutingCardTile({
   mode = "auto",
 }: RoutingCardTileProps) {
   // Researcher routing is primary for the takeover board, or fallback to first available
-  const routing =
-    routingMap["researcher"] ??
-    routingMap["planner"] ??
-    Object.values(routingMap)[0];
+  const routing = routingMap["researcher"] ?? routingMap["planner"] ?? Object.values(routingMap)[0];
 
   const researcherSlot = slots.researcher;
-  const replacedAgentIds = new Set(
-    (researcherSlot?.replaced ?? []).map((r) => r.agentId),
-  );
+  const replacedAgentIds = new Set((researcherSlot?.replaced ?? []).map((r) => r.agentId));
   const activeAgentId = researcherSlot?.agentId ?? routing?.agentId;
 
   const probabilities = routing?.probabilities ?? [
@@ -82,9 +77,7 @@ export default function RoutingCardTile({
                   {displayName}
                 </span>
               ) : (
-                <span style={{ fontWeight: isActive ? 700 : 400 }}>
-                  {displayName}
-                </span>
+                <span style={{ fontWeight: isActive ? 700 : 400 }}>{displayName}</span>
               )}
 
               <div className={`bz-bar ${barClass}`}>
@@ -98,8 +91,8 @@ export default function RoutingCardTile({
       </div>
 
       <div className="bz-muted" style={{ fontSize: "11px", marginTop: "2px" }}>
-        Preference text Jev read: &ldquo;prefer the cheapest agent that can do the
-        job; keep the strongest model for the executor.&rdquo;
+        Preference text Jev read: &ldquo;prefer the cheapest agent that can do the job; keep the
+        strongest model for the executor.&rdquo;
       </div>
     </div>
   );

@@ -79,7 +79,9 @@ describe("Watch Board Replay Page", () => {
         const dialog = screen.getByRole("dialog");
         expect(dialog).toBeInTheDocument();
         expect(within(dialog).getByText(/s1 · inventory/i)).toBeInTheDocument();
-        expect(within(dialog).getByText(/Fetch package manifest and lockfile from repo/i)).toBeInTheDocument();
+        expect(
+          within(dialog).getByText(/Fetch package manifest and lockfile from repo/i),
+        ).toBeInTheDocument();
         expect(within(dialog).getAllByText(/inventory.dependencies/i).length).toBeGreaterThan(0);
       });
 
@@ -88,7 +90,9 @@ describe("Watch Board Replay Page", () => {
       fireEvent.click(closeBtn);
 
       await waitFor(() => {
-        expect(screen.queryByText(/Fetch package manifest and lockfile from repo/i)).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(/Fetch package manifest and lockfile from repo/i),
+        ).not.toBeInTheDocument();
       });
     } finally {
       global.fetch = originalFetch;

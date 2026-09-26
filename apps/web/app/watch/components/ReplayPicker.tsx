@@ -110,19 +110,13 @@ export default function ReplayPicker({
           {loading && <span className="bz-chip warn">loading trace...</span>}
           {error && <span className="bz-chip fail">error: {error.message}</span>}
           {sourceConfig.kind === "static" && (
-            <span className="bz-mono bz-muted">
-              traces/{sourceConfig.traceId}.jsonl
-            </span>
+            <span className="bz-mono bz-muted">traces/{sourceConfig.traceId}.jsonl</span>
           )}
           {sourceConfig.kind === "file" && (
-            <span className="bz-mono bz-muted">
-              file: {sourceConfig.file.name}
-            </span>
+            <span className="bz-mono bz-muted">file: {sourceConfig.file.name}</span>
           )}
           {sourceConfig.kind === "sse" && (
-            <span className="bz-mono bz-muted">
-              paired: {sourceConfig.engineUrl}
-            </span>
+            <span className="bz-mono bz-muted">paired: {sourceConfig.engineUrl}</span>
           )}
         </div>
       </div>
@@ -175,11 +169,7 @@ export default function ReplayPicker({
                 justifyContent: "flex-end",
               }}
             >
-              <button
-                type="button"
-                className="bz-btn sm"
-                onClick={() => setShowLiveModal(false)}
-              >
+              <button type="button" className="bz-btn sm" onClick={() => setShowLiveModal(false)}>
                 Cancel
               </button>
               <button type="submit" className="bz-btn primary sm">

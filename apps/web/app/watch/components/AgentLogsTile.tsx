@@ -7,11 +7,26 @@ interface AgentLogsTileProps {
   byRole: Record<string, LogEntry[]>;
 }
 
-const ROLES = ["orchestrator", "planner", "researcher", "executor", "critic"] as const;
+const STANDARD_ROLES = ["orchestrator", "planner", "researcher", "executor", "critic"];
 
 export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
   const [selectedTab, setSelectedTab] = useState<string>("researcher");
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  const availableRoles = useMemo(() => {
+    const roles: string[] = [];
+    STANDARD_ROLES.forEach((r) => {
+      if (byRole[r] && byRole[r].length > 0) {
+        roles.push(r);
+      }
+    });
+    Object.keys(byRole).forEach((r) => {
+      if (r !== "system" && !roles.includes(r)) {
+        roles.push(r);
+      }
+    });
+    return roles.length > 0 ? roles : STANDARD_ROLES;
+  }, [byRole]);
 
   const activeEntries = useMemo(() => {
     return selectedTab === "all" ? entries : (byRole[selectedTab] ?? []);
@@ -34,7 +49,7 @@ export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
         >
           all
         </button>
-        {ROLES.map((role) => (
+        {availableRoles.map((role) => (
           <button
             key={role}
             type="button"
@@ -96,9 +111,7 @@ export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
                   ) : (
                     <span className="dim">{latencyMs ? `${latencyMs}ms` : ""}</span>
                   )}
-                  {retries > 0 && (
-                    <span className="warn"> · retry {retries}</span>
-                  )}
+                  {retries > 0 && <span className="warn"> · retry {retries}</span>}
                 </div>
               );
             }
@@ -140,16 +153,23 @@ export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
               );
             }
 
-            if (entry.kind === "slot.failed" || (entry.type === "slot" && entry.slotInfo?.state === "failed")) {
+            if (
+              entry.kind === "slot.failed" ||
+              (entry.type === "slot" && entry.slotInfo?.state === "failed")
+            ) {
               const failTime = entry.ts ? formatTimeWithFraction(entry.ts % 10000000) : "03:07.2";
               return (
                 <div key={`log-${entry.seq}-${idx}`} className="err">
-                  x slot.failed operator_kill &ldquo;{entry.slotInfo?.detail || "killed from console"}&rdquo; {failTime}
+                  x slot.failed operator_kill &ldquo;
+                  {entry.slotInfo?.detail || "killed from console"}&rdquo; {failTime}
                 </div>
               );
             }
 
-            if (entry.kind === "slot.replacing" || (entry.type === "slot" && entry.slotInfo?.state === "replacing")) {
+            if (
+              entry.kind === "slot.replacing" ||
+              (entry.type === "slot" && entry.slotInfo?.state === "replacing")
+            ) {
               return (
                 <div key={`log-${entry.seq}-${idx}`} className="warn">
                   &gt; slot.replacing standby #1 Gemini Flash · handoff 5 cached
@@ -158,11 +178,7 @@ export default function AgentLogsTile({ entries, byRole }: AgentLogsTileProps) {
             }
 
             if (entry.type === "text" && entry.text) {
-              return (
-                <div key={`log-${entry.seq}-${idx}`}>
-                  &ldquo;{entry.text}&rdquo;
-                </div>
-              );
+              return <div key={`log-${entry.seq}-${idx}`}>&ldquo;{entry.text}&rdquo;</div>;
             }
 
             if (entry.type === "opaque" && entry.text) {

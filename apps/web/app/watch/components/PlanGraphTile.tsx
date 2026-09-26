@@ -50,9 +50,7 @@ export default function PlanGraphTile({
 }: PlanGraphTileProps) {
   const subtasks = plan.subtasks.length > 0 ? plan.subtasks : [];
   const isReference7 =
-    subtasks.length === 7 &&
-    subtasks[0]?.id === "s1" &&
-    subtasks[6]?.id === "s7";
+    subtasks.length === 7 && subtasks[0]?.id === "s1" && subtasks[6]?.id === "s7";
 
   // Dynamic layout generator for arbitrary subtask DAGs
   const nodeMap = new Map<string, Subtask>();
@@ -113,9 +111,7 @@ export default function PlanGraphTile({
   }
 
   // Generate edges
-  const edges: { from: string; to: string; d: string }[] = isReference7
-    ? REFERENCE_7_EDGES
-    : [];
+  const edges: { from: string; to: string; d: string }[] = isReference7 ? REFERENCE_7_EDGES : [];
 
   if (!isReference7 && subtasks.length > 0) {
     subtasks.forEach((st) => {
@@ -199,11 +195,7 @@ export default function PlanGraphTile({
             const isNodeTakenOver = st.id === "s3" && isTakeoverHappened;
             const isApprovalNode = st.id === "s7" && isPending;
 
-            const nodeClass = isDone
-              ? "node done"
-              : isRunning
-                ? "node run"
-                : "node wait";
+            const nodeClass = isDone ? "node done" : isRunning ? "node run" : "node wait";
 
             const textClass = isDone || isRunning ? "inv" : "";
             const metaClass = isDone || isRunning ? "inv" : "t-muted";

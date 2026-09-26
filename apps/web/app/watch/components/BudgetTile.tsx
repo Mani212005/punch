@@ -13,14 +13,10 @@ export default function BudgetTile({ budget }: BudgetTileProps) {
       : 0;
 
   const usdPct =
-    budget.usd.max > 0
-      ? Math.min(100, Math.round((budget.usd.used / budget.usd.max) * 100))
-      : 0;
+    budget.usd.max > 0 ? Math.min(100, Math.round((budget.usd.used / budget.usd.max) * 100)) : 0;
 
   const msPct =
-    budget.ms.max > 0
-      ? Math.min(100, Math.round((budget.ms.used / budget.ms.max) * 100))
-      : 0;
+    budget.ms.max > 0 ? Math.min(100, Math.round((budget.ms.used / budget.ms.max) * 100)) : 0;
 
   const getBarClass = (pct: number, isExceeded: boolean) => {
     if (isExceeded || pct >= 100) return "fail";

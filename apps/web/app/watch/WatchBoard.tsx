@@ -97,19 +97,12 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
         {/* Watch Board Bento Grid */}
         <div className="bz-grid">
           {/* Row 1: Run Tile (8 cols) + Budget Tile (4 cols) */}
-          <RunTile
-            run={state.run}
-            activeTakeover={state.takeover.active}
-            onStop={() => {}}
-          />
+          <RunTile run={state.run} activeTakeover={state.takeover.active} onStop={() => {}} />
           <BudgetTile budget={state.budget} />
 
           {/* Row 2: Takeover Banner (12 cols) */}
           {state.takeover.active && (
-            <TakeoverBanner
-              banner={state.takeover.active}
-              subtasks={state.plan.subtasks}
-            />
+            <TakeoverBanner banner={state.takeover.active} subtasks={state.plan.subtasks} />
           )}
 
           {/* Row 3 & 4: Bento layout (3 + 5 + 4 cols = 12 cols) */}
@@ -130,17 +123,10 @@ export default function WatchBoard({ initialTraceId = "takeover" }: WatchBoardPr
           />
 
           {/* Agent Logs: 4 cols, 2 rows */}
-          <AgentLogsTile
-            entries={state.logs.entries}
-            byRole={state.logs.byRole}
-          />
+          <AgentLogsTile entries={state.logs.entries} byRole={state.logs.byRole} />
 
           {/* Routing Card: 5 cols (Row 4, directly under Plan Graph) */}
-          <RoutingCardTile
-            routingMap={state.routing}
-            slots={state.slots}
-            mode={state.run.mode}
-          />
+          <RoutingCardTile routingMap={state.routing} slots={state.slots} mode={state.run.mode} />
 
           {/* Row 5: Timeline Gantt with Replay Controls & Scrubber (12 cols) */}
           <TimelineTile
