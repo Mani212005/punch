@@ -56,7 +56,7 @@ A run starts with a repository URL and an optional budget (max steps, max
 dollars, max wall-clock time). Two doors in, same run loop behind both:
 
 - CLI: `punch run <repo-url>` in `apps/engine/src/run.ts`.
-- HTTP: the Hono server in `apps/engine/src/server/server.ts` exposes
+- HTTP: the plain `node:http` server in `apps/engine/src/server/server.ts` exposes
   `/runs`, `/runs/:id`, `/runs/:id/events` (SSE), `/runs/:id/trace`, plus
   kill, chaos, approval, and stop endpoints.
 
@@ -78,6 +78,15 @@ The full probability vector becomes the slot's standby list: ranked backups
 known before anything breaks (`packages/core/src/router/standby.ts`). In
 auto mode, confidence below `autoConfirmBelowConfidence` (default 0.6)
 pauses for user confirmation; in manual mode the user picks.
+
+The orchestrator itself is a working session (`packages/core/src/
+orchestrator/session.ts`): the user-chosen agent in auto or manual mode,
+with four engine tools (`packages/core/src/orchestrator/tools.ts`).
+`consult_router` returns assignments with standby lists, probabilities,
+confidence, and provenance; `start_run` refuses assignments that differ
+from the user's manual selection; `get_run_status` and `answer_approval`
+are read and acknowledge only. Sessions persist server-side under
+`apps/engine/src/server/sessions.ts`.
 
 Jev is also used for two smaller jobs: classifying errors as transient,
 permanent, malformed, or not found (`router/classify-error.ts`), and a
@@ -208,9 +217,10 @@ verdicts, the timeline, and (in replay) a scrubber. The trace reducer
 and replay look identical at the same event index. Two recorded traces ship
 with the site (`traces/clean.jsonl`, `traces/takeover.jsonl`).
 
-The console (pairing strip, orchestrator chat, Kill buttons, chaos selector,
+The console UI (pairing strip, chat view, Kill buttons, chaos selector,
 approval modal) is planned but not merged: there is no `apps/web/app/console`
-yet, and the CLI remains the complete control surface. Likewise `punch serve
+yet, and the CLI remains the complete control surface. The orchestrator
+session it will talk to already exists engine-side (section 2). Likewise `punch serve
 --tunnel` for remote viewing is planned; the viewer token exists but the
 tunnel flag does not.
 
@@ -249,10 +259,8 @@ completed, with the takeover visible on the watch board.
   dedicated inventory / reachability / impact / investigator prompts and
   the investigation DAG template are still in progress. The planner prompt
   on main today still describes dependency triage.
-- **Orchestrator chat session.** `packages/core/src/orchestrator/` is a
-  stub; engine-side sessions exist (`apps/engine/src/server/sessions.ts`)
-  but there is no conversational orchestrator yet.
-- **Console page and remote tunnel viewing.** Viewer-token auth is merged;
-  the console UI and `serve --tunnel` are not.
+- **Console page and remote tunnel viewing.** Viewer-token auth and the
+  orchestrator session are merged; the console UI and `serve --tunnel`
+  are not.
 - **Resilience bench (E7), web report views (E8), supply-chain signals
   (E9, stretch).** Not merged.
