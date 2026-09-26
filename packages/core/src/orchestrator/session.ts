@@ -176,7 +176,7 @@ export class OrchestratorSession {
     });
     if (!adapter.capabilities.toolCalling) {
       throw new Error(
-        `orchestrator agent "${agent.id}" cannot call tools; choose an Anthropic or Gemini agent`,
+        `orchestrator agent "${agent.id}" is a CLI agent and cannot call tools; the orchestrator chat needs one. Add an Anthropic or Gemini provider (set ANTHROPIC_API_KEY or GEMINI_API_KEY) and point defaults.orchestratorAgentId at it. Runs via \`punch run\` still work with CLI agents only`,
       );
     }
     const input: AdapterRunInput = {
