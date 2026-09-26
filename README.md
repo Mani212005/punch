@@ -1,6 +1,6 @@
 # Punch
 
-A multi-agent system that plans, delegates across user-configured models, calls real tools, and hands a failed agent's work to a replacement. See [spec.md](spec.md) for the challenge and [plan.md](plan.md) for the build contract. Visual design lives in [design/](design/).
+A multi-agent system that plans, delegates across user-configured models, calls real tools, and hands a failed agent's work to a replacement. See [spec.md](spec.md) for the challenge and [plan.md](plan.md) for the build contract. [docs/workflow.md](docs/workflow.md) explains how a run works end to end. Visual design lives in [design/](design/).
 
 ## Development
 
