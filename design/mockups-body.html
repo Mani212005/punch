@@ -1,0 +1,261 @@
+<!-- Punch mockups body: Landing, Watch board (mid-takeover), Console. Requires tokens.css + components.css. -->
+<div class="bz" style="padding:0;display:flex;flex-direction:column;gap:28px">
+
+<!-- ================= DESIGN SYSTEM AT A GLANCE ================= -->
+<div class="bz-grid" id="bz-system">
+  <div class="bz-tile c4">
+    <div class="bz-label">palette · one meaning each</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+      <div><div style="height:44px;background:var(--bz-blue);border:2px solid var(--bz-ink)"></div><div class="bz-mono" style="margin-top:4px">blue · running</div></div>
+      <div><div style="height:44px;background:var(--bz-red);border:2px solid var(--bz-ink)"></div><div class="bz-mono" style="margin-top:4px">red · failed</div></div>
+      <div><div style="height:44px;background:var(--bz-yellow);border:2px solid var(--bz-ink)"></div><div class="bz-mono" style="margin-top:4px">yellow · attention</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+      <div><div style="height:24px;background:var(--bz-paper);border:2px solid var(--bz-ink)"></div><div class="bz-mono" style="margin-top:4px">paper</div></div>
+      <div><div style="height:24px;background:var(--bz-paper-2);border:2px solid var(--bz-ink)"></div><div class="bz-mono" style="margin-top:4px">paper-2</div></div>
+      <div><div style="height:24px;background:var(--bz-ink);border:2px solid var(--bz-ink)"></div><div class="bz-mono" style="margin-top:4px">ink</div></div>
+    </div>
+  </div>
+  <div class="bz-tile c4">
+    <div class="bz-label">state glyphs · shape first, color second, word always</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:12px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="bz-glyph lg run"></span>running</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="bz-glyph lg done"></span>done</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="bz-glyph lg wait"></span>pending</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="bz-glyph lg warn"></span>stalled · takeover · needs human</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="bz-glyph lg fail"></span>failed</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="bz-glyph lg replaced"></span>replaced</div>
+    </div>
+    <div class="bz-muted" style="font-size:11px">Circle, square, triangle: the Bauhaus primitives carry state so color is never the only signal.</div>
+  </div>
+  <div class="bz-tile c4">
+    <div class="bz-label">type · space grotesk + jetbrains mono</div>
+    <div class="bz-h2">Aa 44/28/18</div>
+    <div class="bz-lead">Lead 16 for one-sentence explanations.</div>
+    <div>Body 13, line 1.4. Wraps, never truncates.</div>
+    <div class="bz-label" style="color:var(--bz-ink)">label 10 mono uppercase 0.08em</div>
+    <div class="bz-num">0.52 · $0.62 · 03:12 tabular</div>
+  </div>
+  <div class="bz-tile ink c6">
+    <div class="bz-label">structure</div>
+    <div style="font-size:12px;line-height:1.5">Bento grid of 12 columns, 10px gutter. Tiles have 2px ink borders and 10px radius; every inner control is square. No shadows, no gradients, one motion duration (180ms). Each tile carries exactly one mono label naming its job.</div>
+  </div>
+  <div class="bz-tile c6 alt">
+    <div class="bz-label">controls</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <button class="bz-btn primary">Approve</button><button class="bz-btn danger">Kill</button><button class="bz-btn ink">Open trace</button><button class="bz-btn">Validate</button><button class="bz-btn" disabled>Kill</button>
+      <span class="bz-chip run"><span class="bz-glyph run" style="background:var(--bz-paper)"></span>running</span><span class="bz-chip fail">failed</span><span class="bz-chip warn">takeover</span><span class="bz-chip done">done</span><span class="bz-chip ghost">waiting</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><select class="bz-select"><option>Opus 5.5 · anthropic</option></select><input class="bz-input" value="github.com/acme/webapp"></div>
+  </div>
+</div>
+
+<!-- ================= LANDING ================= -->
+<div id="bz-landing">
+  <div class="bz-frame">
+    <div class="bar"><span class="bz-glyph done"></span><span class="bz-glyph done"></span><span class="bz-glyph done"></span><span class="url">https://punch.vercel.app</span></div>
+    <div class="body" style="display:flex;flex-direction:column;gap:10px">
+      <div class="bz-nav"><div class="brand"><span class="bz-mark"><i></i><i></i><i></i><i></i></span>Punch</div><div class="links"><a>Features</a><a>Watch</a><a>Run locally</a><a style="border:2px solid var(--bz-ink);padding:2px 8px">GitHub</a></div></div>
+      <div class="bz-grid">
+        <div class="bz-tile c8" style="gap:14px;padding:22px">
+          <div class="bz-label">multi-agent system · runs on your machine</div>
+          <h1 class="bz-h1">Agents that plan, delegate, and take over for each other.</h1>
+          <p class="bz-lead bz-muted" style="max-width:52ch">Use the models you already pay for. Jev decides who does what. When an agent dies, the next one picks up its work with everything it had fetched. Every decision is in the trace.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="bz-btn primary">Watch the takeover run</button><button class="bz-btn">Read the trace format</button></div>
+        </div>
+        <div class="bz-tile ink c4" style="justify-content:space-between">
+          <div class="bz-label">source</div>
+          <div class="bz-h3">github.com/&lt;you&gt;/punch</div>
+          <div style="font-size:12px;opacity:.8">MIT. TypeScript. Engine, CLI, and this site in one repo.</div>
+          <button class="bz-btn" style="background:var(--bz-paper);color:var(--bz-ink);align-self:flex-start">View on GitHub</button>
+        </div>
+        <div class="bz-tile c4"><div class="bz-label">01 · plan</div><div style="width:40px;height:40px;border-radius:50%;background:var(--bz-red)"></div><div class="bz-h3">The planner writes a subtask graph</div><div class="bz-muted" style="font-size:12px">Dependencies, role hints, and what counts as done for each subtask.</div></div>
+        <div class="bz-tile c4"><div class="bz-label">02 · delegate</div><div style="width:40px;height:40px;background:var(--bz-blue)"></div><div class="bz-h3">Jev assigns your agents to roles</div><div class="bz-muted" style="font-size:12px">Probabilities you can see. Pins and rules you write outrank it.</div></div>
+        <div class="bz-tile c4"><div class="bz-label">03 · recover</div><div style="width:0;height:0;border-left:22px solid transparent;border-right:22px solid transparent;border-bottom:40px solid var(--bz-yellow)"></div><div class="bz-h3">A failed agent is replaced mid-task</div><div class="bz-muted" style="font-size:12px">The standby resumes with the cached tool results. You watch it happen.</div></div>
+
+        <div class="bz-tile alt c4"><div class="bz-label">planning and delegation</div><div style="font-size:12px">Subtask DAG with dependencies; Jev picks per role with visible probabilities.</div><a class="bz-mono">see 00:04 · clean run</a></div>
+        <div class="bz-tile alt c4"><div class="bz-label">real tools, real failures</div><div style="font-size:12px">OSV, npm, GitHub. Retries, fallbacks, degraded sections instead of crashes.</div><a class="bz-mono">see 00:41 · chaos run</a></div>
+        <div class="bz-tile yellow c4"><div class="bz-label">agent takeover</div><div style="font-size:12px;font-weight:700">Kill the researcher. A standby resumes with 5 cached results in 1.8s.</div><a class="bz-mono">see 01:12 · takeover run</a></div>
+        <div class="bz-tile alt c4"><div class="bz-label">audit trail</div><div style="font-size:12px">Append-only JSONL: who did what, with which inputs, and why it was chosen.</div><a class="bz-mono">open any trace</a></div>
+        <div class="bz-tile alt c4"><div class="bz-label">budgets and stopping</div><div style="font-size:12px">Steps, measured dollars, wall clock. A wrap-up turn when a cap hits.</div><a class="bz-mono">see 02:30 · chaos run</a></div>
+        <div class="bz-tile alt c4"><div class="bz-label">human approval</div><div style="font-size:12px">Filing the issue waits for you. No auto-approve flag exists.</div><a class="bz-mono">see 03:05 · denial run</a></div>
+
+        <div class="bz-tile ink c6"><div class="bz-label">run it locally</div><div class="bz-log" style="padding:0;background:none"><div>$ npm i -g punch</div><div>$ punch config test</div><div>$ punch serve</div><div class="ok">&gt; paired · token 7f3a-… · open /console</div></div></div>
+        <div class="bz-tile c6"><div class="bz-label">where things run</div><div style="font-size:12px;line-height:1.5">Engine, agents, keys, and tool calls run on your machine. This site holds no secrets; it renders the event stream from your engine, live, or replays a recorded one.</div><div class="bz-mono bz-muted">localhost:4141 · pairing token · read-only viewer token</div></div>
+      </div>
+      <div class="bz-mono bz-muted" style="text-align:center;padding:4px">Punch on GitHub · MIT</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= WATCH BOARD ================= -->
+<div id="bz-watch">
+  <div class="bz-frame">
+    <div class="bar"><span class="bz-glyph done"></span><span class="bz-glyph done"></span><span class="bz-glyph done"></span><span class="url">https://punch.vercel.app/watch · paired to localhost:4141</span></div>
+    <div class="body">
+      <div class="bz-grid">
+        <!-- run -->
+        <div class="bz-tile c8" style="flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px">
+          <span class="bz-glyph lg warn"></span>
+          <div><div class="bz-label">run</div><div class="bz-h3 bz-num" style="font-size:16px">2026-09-26-1418</div></div>
+          <span class="bz-chip">auto</span><span class="bz-mono">github.com/acme/webapp</span>
+          <span class="bz-chip warn" style="margin-left:auto">takeover in progress</span>
+          <button class="bz-btn danger sm">Stop</button>
+        </div>
+        <!-- budget -->
+        <div class="bz-tile c4" style="gap:6px">
+          <div class="bz-label">budget · measured</div>
+          <div style="display:grid;grid-template-columns:52px minmax(0,1fr) 70px;gap:8px;align-items:center;font-size:11px">
+            <span class="bz-mono">steps</span><div class="bz-bar"><i style="width:42%"></i></div><span class="bz-num" style="text-align:right">17 / 40</span>
+            <span class="bz-mono">usd</span><div class="bz-bar"><i style="width:31%"></i></div><span class="bz-num" style="text-align:right">0.62 / 2.00</span>
+            <span class="bz-mono">clock</span><div class="bz-bar"><i style="width:40%"></i></div><span class="bz-num" style="text-align:right">03:12 / 08:00</span>
+          </div>
+        </div>
+        <!-- banner -->
+        <div class="bz-banner c12">
+          <span class="bz-glyph lg warn" style="margin-top:3px"></span>
+          <div class="bz-h3">Researcher slot: Opus 5 failed (operator_kill) at 03:07. Gemini Flash is taking over.</div>
+          <div class="facts">
+            <div><b>why this replacement</b>Standby #1 from Jev's routing, p=0.24. No pin, no fallback chain for researcher.</div>
+            <div><b>handed over</b>Subtask s3 "latest versions", inputs inventory.dependencies + vulns.*, 5 cached tool results, partial notes (2 packages checked).</div>
+            <div><b>detection to takeover</b>1.8s. Effort bumped low to high. Replacements used 1 of 2.</div>
+          </div>
+        </div>
+        <!-- slots -->
+        <div class="bz-tile c3 r2" style="gap:8px">
+          <div class="bz-label">slots</div>
+          <div class="bz-agent running"><span class="role">Orchestrator</span><span class="bz-chip run">running</span><span class="who">Opus 5.5 · anthropic · high</span><span class="meta">narrating · 3 turns · $0.09</span></div>
+          <div class="bz-agent done"><span class="role">Planner</span><span class="bz-chip done">done</span><span class="who">Opus 5.5 · anthropic · high</span><span class="meta">7 subtasks · 1 turn · $0.11</span></div>
+          <div class="bz-agent running"><span class="role">Researcher</span><span class="bz-chip run">running</span><span class="who">Gemini Flash · gemini · low</span><span class="meta">s3 · resumed with 5 cached results · heartbeat 0.4s</span><span class="standby">standby: Opus 5.5 (0.14) · Grok (0.10)</span></div>
+          <div class="bz-agent replaced" style="margin-left:12px"><span class="role"><span class="bz-glyph replaced"></span> replaced: Opus 5</span><span class="bz-chip fail">failed</span><span class="who">operator_kill · 6 turns · $0.27</span><span class="meta">s1, s2 done · s3 handed over</span></div>
+          <div class="bz-agent"><span class="role">Executor</span><span class="bz-chip ghost">waiting</span><span class="who">Opus 5.5 · anthropic · high</span><span class="meta">waits on s4</span><span class="standby">standby: Opus 5 (0.31) · OpenCode (0.12)</span></div>
+          <div class="bz-agent"><span class="role">Critic</span><span class="bz-chip ghost">waiting</span><span class="who">Grok · xai · medium</span><span class="meta">distinct from executor</span><span class="standby">standby: Gemini Flash (0.29)</span></div>
+        </div>
+        <!-- plan graph -->
+        <div class="bz-tile c5">
+          <div class="bz-label">plan graph · 7 subtasks</div>
+          <svg class="fig" viewBox="0 0 520 240" role="img" aria-label="Subtask graph: s1 and s2 done, s3 running on the replacement, s4 to s7 pending">
+            <defs><marker id="bzarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#121212"/></marker></defs>
+            <rect class="node done" x="14" y="96" width="110" height="46"/><text x="69" y="115" font-size="11" font-weight="700" text-anchor="middle" class="inv">s1 inventory</text><text x="69" y="130" font-size="9" text-anchor="middle" class="inv">done · Opus 5</text>
+            <rect class="node done" x="158" y="36" width="110" height="46"/><text x="213" y="55" font-size="11" font-weight="700" text-anchor="middle" class="inv">s2 vulns · OSV</text><text x="213" y="70" font-size="9" text-anchor="middle" class="inv">done · 1 retry</text>
+            <rect class="node run" x="158" y="156" width="110" height="46"/><text x="213" y="175" font-size="11" font-weight="700" text-anchor="middle" class="inv">s3 versions</text><text x="213" y="190" font-size="9" text-anchor="middle" class="inv">running · Gemini</text>
+            <text x="213" y="220" font-size="9" text-anchor="middle" class="t-muted">was Opus 5 · taken over 03:07</text>
+            <rect class="node wait" x="296" y="96" width="118" height="46"/><text x="355" y="115" font-size="11" font-weight="700" text-anchor="middle">s4 release risk</text><text x="355" y="130" font-size="9" text-anchor="middle" class="t-muted">pending · researcher</text>
+            <rect class="node wait" x="418" y="16" width="96" height="40"/><text x="466" y="33" font-size="10" font-weight="700" text-anchor="middle">s5 draft report</text><text x="466" y="47" font-size="9" text-anchor="middle" class="t-muted">executor</text>
+            <rect class="node wait" x="418" y="96" width="96" height="40"/><text x="466" y="113" font-size="10" font-weight="700" text-anchor="middle">s6 critic review</text><text x="466" y="127" font-size="9" text-anchor="middle" class="t-muted">critic</text>
+            <rect class="node wait" x="418" y="176" width="96" height="40" stroke="#F5C518"/><text x="466" y="193" font-size="10" font-weight="700" text-anchor="middle">s7 file issue</text><text x="466" y="207" font-size="9" text-anchor="middle" class="t-muted">needs approval</text>
+            <path class="edge" d="M124 114 L158 66" marker-end="url(#bzarr)"/><path class="edge" d="M124 124 L158 172" marker-end="url(#bzarr)"/>
+            <path class="edge" d="M268 66 L296 104" marker-end="url(#bzarr)"/><path class="edge" d="M268 172 L296 134" marker-end="url(#bzarr)"/>
+            <path class="edge" d="M414 100 L450 56" marker-end="url(#bzarr)"/><path class="edge" d="M466 56 L466 96" marker-end="url(#bzarr)"/><path class="edge" d="M466 136 L466 176" marker-end="url(#bzarr)"/>
+          </svg>
+        </div>
+        <!-- logs -->
+        <div class="bz-tile c4 r2" style="gap:8px">
+          <div class="bz-label">agent logs</div>
+          <div class="bz-tabs"><button>orchestrator</button><button>planner</button><button class="active">researcher</button><button>executor</button><button>critic</button></div>
+          <div class="bz-log" style="flex:1">
+            <div class="sep">-- Opus 5 · s1 inventory</div>
+            <div><span class="ok">200</span> github_get_file package.json <span class="dim">412ms</span></div>
+            <div><span class="ok">200</span> github_get_file package-lock.json <span class="dim">688ms</span></div>
+            <div><span class="info">write</span> inventory.dependencies <span class="dim">43 packages</span></div>
+            <div class="sep">-- Opus 5 · s2 vulns</div>
+            <div><span class="warn">503</span> osv_querybatch <span class="dim">retry 1/3 · backoff 800ms</span></div>
+            <div><span class="ok">200</span> osv_querybatch <span class="dim">1.9s · 6 with advisories</span></div>
+            <div><span class="info">write</span> vulns.* <span class="dim">6 keys</span></div>
+            <div class="sep">-- Opus 5 · s3 versions</div>
+            <div><span class="ok">200</span> npm_latest lodash <span class="dim">230ms</span></div>
+            <div><span class="ok">200</span> npm_latest minimist <span class="dim">198ms</span></div>
+            <div class="err">x slot.failed operator_kill "killed from console" 03:07.2</div>
+            <div class="warn">&gt; slot.replacing standby #1 Gemini Flash · handoff 5 cached</div>
+            <div class="sep">-- Gemini Flash · s3 versions (resumed)</div>
+            <div><span class="ok">200</span> npm_latest lodash <span class="dim">cached</span></div>
+            <div><span class="ok">200</span> npm_latest minimist <span class="dim">cached</span></div>
+            <div><span class="ok">200</span> npm_latest express <span class="dim">241ms</span></div>
+            <div><span class="ok">200</span> npm_latest semver <span class="dim">203ms</span></div>
+            <div>"Two versions differ by a major; flagging for s4."</div>
+            <div class="dim">▮</div>
+          </div>
+        </div>
+        <!-- routing -->
+        <div class="bz-tile c5" style="gap:6px">
+          <div class="bz-label">routing · researcher · auto</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px" class="bz-mono bz-muted"><span>difficulty moderate</span><span>confidence 0.46</span><span>provenance jev</span></div>
+          <div class="bz-prob"><span style="text-decoration:line-through;color:var(--bz-ink-2)">Opus 5</span><div class="bz-bar fail"><i style="width:52%"></i></div><span class="bz-num">0.52</span></div>
+          <div class="bz-prob"><span style="font-weight:700">Gemini Flash</span><div class="bz-bar"><i style="width:24%"></i></div><span class="bz-num">0.24</span></div>
+          <div class="bz-prob"><span>Opus 5.5</span><div class="bz-bar ghost"><i style="width:14%"></i></div><span class="bz-num">0.14</span></div>
+          <div class="bz-prob"><span>Grok</span><div class="bz-bar ghost"><i style="width:10%"></i></div><span class="bz-num">0.10</span></div>
+          <div class="bz-muted" style="font-size:11px">Preference text Jev read: "prefer the cheapest agent that can do the job; keep the strongest model for the executor."</div>
+        </div>
+        <!-- timeline -->
+        <div class="bz-tile c12">
+          <div class="bz-label">timeline <span style="margin-left:auto;display:flex;gap:6px"><button class="bz-btn sm">1x</button><button class="bz-btn sm">4x</button><button class="bz-btn sm">step</button></span></div>
+          <svg class="fig" viewBox="0 0 1000 140" role="img" aria-label="Timeline with the kill at 03:07 and the takeover 1.8 seconds later">
+            <text x="6" y="24" font-size="10">planner</text><rect x="90" y="14" width="70" height="14" fill="#121212"/>
+            <text x="6" y="50" font-size="10">researcher</text><rect x="165" y="40" width="360" height="14" fill="#121212"/><text x="171" y="51" font-size="9" class="inv">Opus 5 · s1 s2 s3</text>
+            <rect x="525" y="40" width="6" height="14" fill="#E4321B"/><rect x="548" y="40" width="220" height="14" fill="#1F48C5"/><text x="554" y="51" font-size="9" class="inv">Gemini Flash · s3 resumed</text>
+            <line x1="531" y1="62" x2="548" y2="62" stroke="#E4321B" stroke-width="2"/><text x="540" y="75" font-size="9" text-anchor="middle" class="t-red">1.8s</text>
+            <text x="6" y="96" font-size="10">executor</text><rect x="770" y="86" width="120" height="14" fill="none" stroke="#A39E93" stroke-width="2" stroke-dasharray="4 3"/>
+            <text x="6" y="122" font-size="10">critic</text><rect x="895" y="112" width="90" height="14" fill="none" stroke="#A39E93" stroke-width="2" stroke-dasharray="4 3"/>
+            <line x1="90" y1="132" x2="990" y2="132" stroke="#121212" stroke-width="2"/>
+            <text x="90" y="139" font-size="8" class="t-muted">00:00</text><text x="530" y="139" font-size="8" class="t-red" text-anchor="middle">03:07 kill</text><text x="770" y="139" font-size="8" class="t-blue" text-anchor="middle">now 03:12</text><text x="990" y="139" font-size="8" class="t-muted" text-anchor="end">08:00 cap</text>
+            <line x1="768" y1="6" x2="768" y2="132" stroke="#1F48C5" stroke-width="2" stroke-dasharray="5 4"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CONSOLE ================= -->
+<div id="bz-console">
+  <div class="bz-frame">
+    <div class="bar"><span class="bz-glyph done"></span><span class="bz-glyph done"></span><span class="bz-glyph done"></span><span class="url">https://punch.vercel.app/console</span></div>
+    <div class="body">
+      <div class="bz-grid">
+        <div class="bz-tile c12" style="flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="bz-glyph run"></span><span class="bz-mono">paired · localhost:4141</span><span class="bz-chip">config valid · 5 agents · 4 providers</span>
+          <span style="margin-left:auto;display:flex;gap:8px"><button class="bz-btn sm">Validate config</button><button class="bz-btn ink sm">Open ~/.punch/config.json</button></span>
+        </div>
+        <div class="bz-tile c7">
+          <div class="bz-label">controls</div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+            <div class="bz-field"><span class="bz-label">orchestrator · you talk to</span><select class="bz-select"><option>Opus 5.5 · anthropic</option><option>Opus 5 · anthropic</option><option>Gemini Flash · gemini</option><option>Grok · xai</option><option disabled>OpenCode · cli · cannot call engine tools</option></select></div>
+            <div class="bz-field"><span class="bz-label">mode</span><div class="bz-seg"><button class="bz-btn primary sm" style="flex:1">Auto</button><button class="bz-btn sm" style="flex:1">Manual</button></div><span class="bz-mono bz-muted" style="font-size:10px">auto · Jev assigns · confirms below 0.6</span></div>
+            <div class="bz-field"><span class="bz-label">chaos · demo</span><select class="bz-select"><option>none</option><option>provider-down: anthropic</option><option>stall: researcher</option><option>garbage: executor</option><option>kill-after: researcher: 3</option></select></div>
+          </div>
+        </div>
+        <div class="bz-tile c5" style="gap:6px">
+          <div class="bz-label">live slots · kill is the demo lever</div>
+          <div class="bz-agent running" style="grid-template-columns:1fr auto"><span class="role">Researcher</span><button class="bz-btn danger sm">Kill</button><span class="who">Gemini Flash · running · s3</span></div>
+          <div class="bz-agent" style="grid-template-columns:1fr auto"><span class="role">Executor</span><button class="bz-btn sm" disabled>Kill</button><span class="who">Opus 5.5 · waiting</span></div>
+          <div class="bz-agent" style="grid-template-columns:1fr auto"><span class="role">Critic</span><button class="bz-btn sm" disabled>Kill</button><span class="who">Grok · waiting</span></div>
+        </div>
+        <div class="bz-tile c7" style="gap:8px">
+          <div class="bz-label">conversation · orchestrator narrates, you decide</div>
+          <div class="bz-msg me"><span class="from">you</span>Triage github.com/acme/webapp for vulnerable dependencies and file an issue with the plan. Budget $2.</div>
+          <div class="bz-msg bot"><span class="from">Opus 5.5 · orchestrator</span>Brief written. I asked Jev to fill the roles from your five agents. Difficulty: moderate. Researcher goes to Opus 5 (0.52, confident enough to start), executor to Opus 5.5, critic to Grok (0.44), kept distinct from the executor as your policy requires. Starting the run; I will tell you when the issue payload needs your approval.</div>
+          <div class="bz-msg bot"><span class="from">Opus 5.5 · orchestrator</span>Planner produced 7 subtasks. Researcher finished inventory (43 packages) and found 6 with advisories; one OSV call needed a retry. Now checking latest versions.</div>
+          <div class="bz-msg bot warn"><span class="from">Opus 5.5 · orchestrator</span>You killed the researcher. Gemini Flash took over subtask s3 in 1.8s with the 5 results Opus 5 had already fetched. One replacement left for that slot.</div>
+          <div style="display:flex;gap:0"><input class="bz-input" placeholder="Message the orchestrator or give a new task" style="border-right:0"><button class="bz-btn primary">Send</button></div>
+        </div>
+        <div class="bz-tile c5" style="border-color:var(--bz-yellow);box-shadow:inset 0 0 0 2px var(--bz-yellow)">
+          <div class="bz-label"><span class="bz-glyph warn"></span>approval · irreversible action</div>
+          <div class="bz-h3" style="font-size:15px">github_create_issue</div>
+          <div class="bz-mono" style="font-size:11px;line-height:1.5">repo acme/webapp<br>title "Security: 6 dependencies with known vulnerabilities (3 high)"<br>body 41 lines · 2 sections marked "not independently verified"</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end"><button class="bz-btn danger">Deny</button><button class="bz-btn primary">Approve</button></div>
+          <div class="bz-mono bz-muted" style="font-size:10px">No auto-approve exists. CLI: punch approve 2026-09-26-1418 a1</div>
+        </div>
+        <div class="bz-tile c5 alt" style="gap:6px">
+          <div class="bz-label">manual mode · you set every role</div>
+          <div class="bz-prob" style="grid-template-columns:80px minmax(0,1fr)"><span>Planner</span><select class="bz-select"><option>Opus 5.5 · Jev suggests 0.61</option><option>Opus 5</option></select></div>
+          <div class="bz-prob" style="grid-template-columns:80px minmax(0,1fr)"><span>Researcher</span><select class="bz-select"><option>Gemini Flash</option><option>Opus 5 · Jev suggests 0.52</option><option>Grok</option><option>OpenCode</option></select></div>
+          <div class="bz-prob" style="grid-template-columns:80px minmax(0,1fr)"><span>Executor</span><select class="bz-select"><option>Opus 5.5 · Jev suggests 0.57</option><option>Opus 5</option></select></div>
+          <div class="bz-prob" style="grid-template-columns:80px minmax(0,1fr)"><span>Critic</span><select class="bz-select"><option>Grok · Jev suggests 0.44</option><option>Gemini Flash</option><option>Opus 5</option></select></div>
+          <button class="bz-btn primary">Run with these assignments</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>

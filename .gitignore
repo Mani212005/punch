@@ -1,0 +1,8 @@
+node_modules/
+.lavish/
+runs/
+dist/
+.next/
+.env
+.turbo/
+coverage/
