@@ -8,6 +8,9 @@ import { NpmClient } from "./npm.js";
 import { GitHubAdvisoryClient } from "./gh-advisory.js";
 import { buildDependencyInventory } from "./inventory.js";
 import { HttpError } from "./http.js";
+import { CompensationRegistry } from "../remediation/compensation.js";
+import { openFixPr } from "../remediation/github-pr.js";
+import { isAllowedManifestFile } from "../remediation/proposal.js";
 import {
   executeFetchRepoSource,
   executeReadRepoFile,
@@ -119,6 +122,32 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
         },
       },
       required: ["owner", "repo", "title", "body"],
+    },
+    irreversible: true,
+  },
+  github_open_fix_pr: {
+    name: "github_open_fix_pr",
+    description:
+      "Open a fix PR on a new branch with exactly the validated manifest/lockfile changes. Irreversible action requiring human approval. Only use for a PASS sandbox validation.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        owner: { type: "string", description: "Repository owner" },
+        repo: { type: "string", description: "Repository name" },
+        base: { type: "string", description: "Base branch, e.g. main" },
+        branch: { type: "string", description: "Fix branch to create" },
+        title: { type: "string", description: "PR title" },
+        body: {
+          type: "string",
+          description:
+            "PR body carrying the finding, evidence, validation summary and critic verdict",
+        },
+        files: {
+          type: "object",
+          description: "Exactly the validated manifest/lockfile diff: path to full file content",
+        },
+      },
+      required: ["owner", "repo", "branch", "title", "body", "files"],
     },
     irreversible: true,
   },
@@ -965,6 +994,50 @@ export async function executeTool<T = unknown>(
         );
         output = res.data;
         retries = res.retries;
+        break;
+      }
+      case "github_open_fix_pr": {
+        const files = (input.files ?? {}) as Record<string, string>;
+        const allowed = Object.fromEntries(
+          Object.entries(files).filter(
+            ([path, content]) => typeof content === "string" && isAllowedManifestFile(path),
+          ),
+        );
+        if (Object.keys(allowed).length === 0) {
+          throw new Error(
+            "refusing to open a fix PR with no validated manifest or lockfile changes",
+          );
+        }
+        const registry = new CompensationRegistry(
+          context.traceSink ? { write: context.traceSink } : undefined,
+          runId,
+          seq,
+        );
+        const result = await openFixPr(
+          ghClient,
+          {
+            owner: input.owner as string,
+            repo: input.repo as string,
+            base: (input.base as string | undefined) ?? "main",
+            branch: input.branch as string,
+            title: input.title as string,
+            body: input.body as string,
+            sandbox: {
+              isolation: "docker",
+              baseline: null,
+              candidate: null,
+              newFailures: [],
+              fixedFailures: [],
+              changedFiles: Object.keys(allowed),
+              verdict: "PASS",
+              evidenceIds: [],
+            },
+            validatedFiles: allowed,
+            signal: context.signal,
+          },
+          registry,
+        );
+        output = result.pull;
         break;
       }
       case "osv_query": {

@@ -49,3 +49,6 @@ export * from "./sandbox/docker.js";
 export * from "./sandbox/parse-tests.js";
 export * from "./sandbox/compare.js";
 export * from "./sandbox/validate.js";
+
+// Approval-gated remediation executor (E6)
+export * from "./remediation/index.js";

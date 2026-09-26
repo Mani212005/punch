@@ -448,6 +448,7 @@ describe("executor", () => {
       "read_blackboard",
       "list_blackboard",
       "github_create_issue",
+      "github_open_fix_pr",
     ]);
   });
 
