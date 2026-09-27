@@ -2,25 +2,30 @@
   "version": 1,
   "providers": [
     {
-      "id": "antigravity",
-      "kind": "antigravity"
+      "id": "anthropic",
+      "kind": "anthropic",
+      "apiKeyEnv": "ANTHROPIC_API_KEY"
     }
   ],
   "agents": [
     {
-      "id": "agy-pro",
-      "displayName": "Antigravity Pro",
-      "providerId": "antigravity",
-      "model": "pro",
+      "id": "claude-3-7-sonnet",
+      "displayName": "Claude 3.7 Sonnet",
+      "providerId": "anthropic",
+      "model": "claude-3-7-sonnet-20250219",
       "costTier": "high",
       "roles": ["orchestrator", "planner", "researcher", "executor", "critic"],
-      "strengths": "Strong reasoning, coding, and general tasks."
+      "strengths": "Strong reasoning, coding, and general tasks.",
+      "pricing": {
+        "inputUsdPerMTok": 3.0,
+        "outputUsdPerMTok": 15.0
+      }
     },
     {
-      "id": "agy-flash",
-      "displayName": "Antigravity Flash",
-      "providerId": "antigravity",
-      "model": "flash",
+      "id": "claude-3-5-haiku",
+      "displayName": "Claude 3.5 Haiku",
+      "providerId": "anthropic",
+      "model": "claude-3-5-haiku-20241022",
       "costTier": "low",
       "roles": ["researcher", "critic"],
       "strengths": "Fast, cheap, good for simple tasks."
@@ -30,7 +35,7 @@
     "pins": [
       {
         "role": "orchestrator",
-        "agentId": "agy-pro"
+        "agentId": "claude-3-7-sonnet"
       }
     ],
     "fallbackChains": [],
@@ -51,6 +56,6 @@
   },
   "defaults": {
     "mode": "auto",
-    "orchestratorAgentId": "agy-pro"
+    "orchestratorAgentId": "claude-3-7-sonnet"
   }
 }

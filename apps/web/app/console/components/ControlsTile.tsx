@@ -21,8 +21,8 @@ export function orchestratorOptions(config: Config | null): OrchestratorOption[]
     const cli = CLI_KINDS.has(kind);
     return {
       id: agent.id,
-      label: `${agent.displayName} · ${cli ? "cli" : agent.providerId}${cli ? " · cannot call engine tools" : ""}`,
-      disabled: cli,
+      label: `${agent.displayName} · ${cli ? "cli" : agent.providerId}`,
+      disabled: false,
     };
   });
 }
@@ -69,13 +69,7 @@ export function ControlsTile(props: Props) {
             value={props.orchestratorId}
             onChange={(event) => props.onOrchestrator(event.target.value)}
           >
-            {options.length === 0 ? (
-              <option value="">no agents configured</option>
-            ) : options.every((o) => o.disabled) ? (
-              <option value="" disabled>
-                no eligible agents
-              </option>
-            ) : null}
+            {options.length === 0 && <option value="">no agents configured</option>}
             {options.map((option) => (
               <option key={option.id} value={option.id} disabled={option.disabled}>
                 {option.label}
