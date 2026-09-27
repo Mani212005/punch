@@ -1416,9 +1416,10 @@ export function traceReducer(state: BoardState, event: TraceEvent): BoardState {
         isTakeoverInProgress: false,
       };
 
-      // Mark seen slots completed if run succeeded; roles with no events stay untouched.
+      // A degraded run still finished its slots; only failed or aborted runs leave them as-is.
+      // Roles with no events stay untouched.
       const slots: Record<SlotRole, SlotLaneState> = { ...next.slots };
-      if (event.status === "completed") {
+      if (event.status === "completed" || event.status === "degraded") {
         for (const role of next.seenRoles) {
           if (slots[role] && slots[role].state !== "failed" && slots[role].state !== "exhausted") {
             slots[role] = { ...slots[role], state: "completed" };

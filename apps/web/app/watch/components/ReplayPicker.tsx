@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { EventSourceConfig } from "@/lib/trace";
 import { parseViewerUrl } from "@/lib/trace";
+import { DEMO_TRACES } from "@/lib/trace/catalog";
 
 interface ReplayPickerProps {
   sourceConfig: EventSourceConfig;
@@ -11,12 +12,6 @@ interface ReplayPickerProps {
   loading: boolean;
   error: Error | null;
 }
-
-const COMMITTED_TRACES = [
-  { id: "investigation", name: "Investigation Run" },
-  { id: "takeover", name: "Takeover Run" },
-  { id: "clean", name: "Clean Run" },
-];
 
 export default function ReplayPicker({
   sourceConfig,
@@ -104,13 +99,14 @@ export default function ReplayPicker({
         >
           <span className="bz-label">trace source:</span>
           <div className="bz-seg">
-            {COMMITTED_TRACES.map((trace) => {
+            {DEMO_TRACES.map((trace) => {
               const isSelected =
                 sourceConfig.kind === "static" && sourceConfig.traceId === trace.id;
               return (
                 <button
                   key={trace.id}
                   type="button"
+                  title={trace.description}
                   className={`bz-btn sm ${isSelected ? "primary" : ""}`}
                   onClick={() => onSelectStaticTrace(trace.id)}
                 >

@@ -214,8 +214,11 @@ slot lanes with standby lists, the plan DAG graph, per-role routing
 probabilities, per-agent logs, the takeover banner, budget meters, critic
 verdicts, the timeline, and (in replay) a scrubber. The trace reducer
 (`apps/web/lib/trace/reducer.ts`) turns events into board state, so live
-and replay look identical at the same event index. Two recorded traces ship
-with the site (`traces/clean.jsonl`, `traces/takeover.jsonl`).
+and replay look identical at the same event index. Recorded traces ship
+with the site and are offered by the replay picker (`apps/web/lib/trace/catalog.ts`): clean, takeover,
+manual, chaos, denial and investigation in `traces/`. The manual, chaos and denial traces are
+recorded with `punch run fixtures/runs/<name>` (chaos: `--chaos tool:osv_query_batch:500 --chaos
+tool:npm_package_metadata:empty`; denial: `--unattended`), then renamed to `traces/<name>.jsonl`.
 
 The console UI (pairing strip, chat view, Kill buttons, chaos selector,
 approval modal) is planned but not merged: there is no `apps/web/app/console`

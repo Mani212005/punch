@@ -78,7 +78,12 @@ export default function RunTile({ run, activeTakeover, onStop, readOnly = false 
           type="button"
           className="bz-btn danger sm"
           onClick={onStop}
-          disabled={run.status === "completed" || run.status === "aborted"}
+          disabled={
+            run.status === "completed" ||
+            run.status === "degraded" ||
+            run.status === "aborted" ||
+            run.status === "failed"
+          }
         >
           Stop
         </button>
