@@ -56,7 +56,7 @@ export class AntigravityAdapter implements AgentAdapter {
       env: this.options.env,
       workdir: this.options.workdir,
       keepWorkdir: this.options.keepWorkdir,
-      buildArgs: (prompt, _promptFilePath, runInput) => {
+      buildArgs: (prompt, _promptFilePath, _runInput) => {
         const args = [
           "-p",
           prompt,
@@ -67,9 +67,7 @@ export class AntigravityAdapter implements AgentAdapter {
         if (this.options.model) {
           args.push("--model", this.options.model);
         }
-        if (runInput.effort) {
-          args.push("--effort", runInput.effort);
-        }
+        // agy does not support --effort; omit it unconditionally.
         return args;
       },
       parseLine: defaultParseCliLine,

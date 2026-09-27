@@ -113,6 +113,12 @@ pnpm build
 
 `pnpm typecheck && pnpm lint && pnpm test` is the CI gate. `pnpm --filter @punch/core test` runs only the core tests. Live adapter tests (Anthropic, Gemini) are skipped by default. `pnpm install` also sets up a pre-commit hook that formats staged files.
 
+For the D1 benchmark pass, run `./run-bench.sh` to measure one clean and one
+chaos run on Express, Fastify, and Next.js; the command writes the six raw
+reports and combines them in `bench-results.md`. It uses the active
+`~/.punch/config.json`, so verify the configured agents and provider quota before
+starting a live pass.
+
 ## Status
 
 Merged: the engine and CLI, router, slots with takeover, the adversarial critic, evidence ledger, sandbox validation, fix-PR executor, orchestrator session and approval gate, the bench command, trace rendering, and the web landing page, watch board and report views.

@@ -55,7 +55,7 @@ describe("AntigravityAdapter", () => {
       toolCalling: false,
       structuredOutput: false,
       streaming: true,
-      effort: true,
+      effort: false,
     });
   });
 

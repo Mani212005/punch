@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   createDefaultAdapterRegistry,
   createJev,
@@ -69,6 +70,18 @@ export function describeEvent(e: TraceEvent): string | null {
   }
 }
 
+async function resolveRunTarget(target: string): Promise<string> {
+  if (target.includes("://") || path.isAbsolute(target)) return target;
+  if (await isRunFixture(target)) return target;
+
+  const invocationDir = process.env.PWD;
+  if (invocationDir) {
+    const fromInvocation = path.resolve(invocationDir, target);
+    if (await isRunFixture(fromInvocation)) return fromInvocation;
+  }
+  return target;
+}
+
 /**
  * `punch run <repo-url|fixture>`. A directory containing `run.json` replays recorded model and
  * tool responses offline; anything else is a repository URL run against the configured agents.
@@ -97,8 +110,9 @@ export async function runCommand(
   };
 
   let loopOptions: RunLoopOptions;
-  if (await isRunFixture(target)) {
-    const fixture = await loadRunFixture(target);
+  const resolvedTarget = await resolveRunTarget(target);
+  if (await isRunFixture(resolvedTarget)) {
+    const fixture = await loadRunFixture(resolvedTarget);
     if (options.config) fixture.config = await loadConfig(getConfigPath(options.config));
     loopOptions = fixtureRunOptions(fixture, overrides);
   } else {
