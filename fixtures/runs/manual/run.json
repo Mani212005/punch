@@ -1,0 +1,787 @@
+{
+  "description": "Offline replay of a manual-mode run across two providers: the operator pins a different agent to each role (planner opus, researcher gemini, executor sonnet, critic opus) instead of letting the router choose. Same recorded bodies and scripts as the takeover run, with no kill.",
+  "task": {
+    "repoUrl": "https://github.com/expressjs/express",
+    "brief": "Triage the dependencies of https://github.com/expressjs/express for known vulnerabilities and write a prioritized remediation report."
+  },
+  "config": {
+    "version": 1,
+    "providers": [
+      {
+        "id": "anthropic",
+        "kind": "anthropic",
+        "apiKeyEnv": "ANTHROPIC_API_KEY"
+      },
+      {
+        "id": "google",
+        "kind": "gemini",
+        "apiKeyEnv": "GEMINI_API_KEY"
+      }
+    ],
+    "agents": [
+      {
+        "id": "opus",
+        "displayName": "Claude Opus",
+        "providerId": "anthropic",
+        "model": "claude-opus-5",
+        "costTier": "high",
+        "roles": [
+          "planner",
+          "inventory",
+          "researcher",
+          "reachability",
+          "impact",
+          "investigator",
+          "executor",
+          "critic"
+        ],
+        "strengths": "Deep reasoning, careful long-form writing",
+        "pricing": {
+          "inputUsdPerMTok": 15,
+          "outputUsdPerMTok": 75
+        }
+      },
+      {
+        "id": "sonnet",
+        "displayName": "Claude Sonnet",
+        "providerId": "anthropic",
+        "model": "claude-sonnet-5",
+        "costTier": "medium",
+        "roles": [
+          "planner",
+          "inventory",
+          "researcher",
+          "reachability",
+          "impact",
+          "investigator",
+          "executor",
+          "critic"
+        ],
+        "strengths": "Balanced, reliable tool calling",
+        "pricing": {
+          "inputUsdPerMTok": 3,
+          "outputUsdPerMTok": 15
+        }
+      },
+      {
+        "id": "gemini",
+        "displayName": "Gemini Flash",
+        "providerId": "google",
+        "model": "gemini-flash-latest",
+        "costTier": "low",
+        "roles": [
+          "planner",
+          "inventory",
+          "researcher",
+          "reachability",
+          "impact",
+          "investigator",
+          "executor",
+          "critic"
+        ],
+        "strengths": "Fast, cheap lookups and tool calling",
+        "pricing": {
+          "inputUsdPerMTok": 0.3,
+          "outputUsdPerMTok": 2.5
+        }
+      }
+    ],
+    "policy": {
+      "pins": [
+        {
+          "role": "planner",
+          "agentId": "opus"
+        },
+        {
+          "role": "researcher",
+          "agentId": "gemini"
+        },
+        {
+          "role": "executor",
+          "agentId": "sonnet"
+        },
+        {
+          "role": "critic",
+          "agentId": "opus"
+        }
+      ],
+      "fallbackChains": [],
+      "rules": [],
+      "preferences": "Prefer quality for the report; cheaper agents are fine for lookups.",
+      "distinctCritic": true,
+      "autoConfirmBelowConfidence": 0.6,
+      "maxReplacementsPerSlot": 2,
+      "stallAfterMs": {
+        "api": 45000,
+        "cli": 120000
+      }
+    },
+    "budgets": {
+      "maxSteps": 60,
+      "maxUsd": 5,
+      "maxWallClockMs": 120000
+    },
+    "defaults": {
+      "mode": "manual"
+    }
+  },
+  "jev": {
+    "routeTask": {
+      "model": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 900,
+        "output_tokens": 80
+      },
+      "answers": {
+        "difficulty": {
+          "type": "score",
+          "score": 0.84,
+          "confidence": 0.73,
+          "legend": {
+            "0": "level 0",
+            "1": "level 1",
+            "2": "level 2"
+          },
+          "probabilities": {
+            "0": 0.17,
+            "1": 0.82,
+            "2": 0.01
+          }
+        },
+        "needs_external_data": {
+          "type": "noul",
+          "noul": 0.94
+        },
+        "is_sensitive": {
+          "type": "noul",
+          "noul": 0.25
+        },
+        "role_planner": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.7,
+            "sonnet": 0.2,
+            "gemini": 0.1
+          }
+        },
+        "role_researcher": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.6,
+          "probabilities": {
+            "opus": 0.6,
+            "gemini": 0.25,
+            "sonnet": 0.15
+          }
+        },
+        "role_executor": {
+          "type": "choice",
+          "choice": "sonnet",
+          "confidence": 0.6,
+          "probabilities": {
+            "opus": 0.3,
+            "sonnet": 0.6,
+            "gemini": 0.1
+          }
+        },
+        "role_critic": {
+          "type": "choice",
+          "choice": "gemini",
+          "confidence": 0.5,
+          "probabilities": {
+            "opus": 0.2,
+            "sonnet": 0.3,
+            "gemini": 0.5
+          }
+        },
+        "role_inventory": {
+          "type": "choice",
+          "choice": "sonnet",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.15,
+            "sonnet": 0.7,
+            "gemini": 0.15
+          }
+        },
+        "role_reachability": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.7,
+            "sonnet": 0.15,
+            "gemini": 0.15
+          }
+        },
+        "role_impact": {
+          "type": "choice",
+          "choice": "sonnet",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.15,
+            "sonnet": 0.7,
+            "gemini": 0.15
+          }
+        },
+        "role_investigator": {
+          "type": "choice",
+          "choice": "opus",
+          "confidence": 0.7,
+          "probabilities": {
+            "opus": 0.7,
+            "sonnet": 0.15,
+            "gemini": 0.15
+          }
+        }
+      }
+    },
+    "routeSubtask": {
+      "default": {
+        "model": "jev-1.13.0",
+        "usage": {
+          "input_tokens": 300,
+          "output_tokens": 30
+        },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "researcher",
+            "confidence": 0.97,
+            "probabilities": {
+              "researcher": 0.97,
+              "executor": 0.01,
+              "none_needed": 0.01,
+              "human": 0.01
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 0.7,
+            "confidence": 0.9,
+            "legend": {
+              "0": "level 0",
+              "1": "level 1",
+              "2": "level 2"
+            },
+            "probabilities": {
+              "0": 0.2,
+              "1": 0.6,
+              "2": 0.2
+            }
+          }
+        }
+      },
+      "Write remediation report": {
+        "model": "jev-1.13.0",
+        "usage": {
+          "input_tokens": 300,
+          "output_tokens": 30
+        },
+        "answers": {
+          "assignee": {
+            "type": "choice",
+            "choice": "executor",
+            "confidence": 0.97,
+            "probabilities": {
+              "researcher": 0.01,
+              "executor": 0.97,
+              "none_needed": 0.01,
+              "human": 0.01
+            }
+          },
+          "complexity": {
+            "type": "score",
+            "score": 1.4,
+            "confidence": 0.9,
+            "legend": {
+              "0": "level 0",
+              "1": "level 1",
+              "2": "level 2"
+            },
+            "probabilities": {
+              "0": 0.2,
+              "1": 0.6,
+              "2": 0.2
+            }
+          }
+        }
+      }
+    },
+    "claimSupport": 0.95
+  },
+  "http": [
+    {
+      "match": "/contents/package-lock.json",
+      "file": "../../github/express_package_lock.json"
+    },
+    {
+      "match": "/contents/package.json",
+      "file": "../../github/express_package_json.json"
+    },
+    {
+      "match": "/contents/CHANGELOG.md",
+      "file": "../../github/express_changelog.json"
+    },
+    {
+      "match": "/releases",
+      "file": "../../github/express_releases.json"
+    },
+    {
+      "match": "/compare/",
+      "file": "../../github/express_compare.json"
+    },
+    {
+      "match": "/v1/querybatch",
+      "file": "../../osv/query_batch_express_deps.json"
+    },
+    {
+      "match": "/v1/query",
+      "file": "../../osv/query_qs_6_5_2.json"
+    },
+    {
+      "match": "registry.npmjs.org/qs",
+      "file": "../../npm/qs_metadata.json"
+    },
+    {
+      "match": "/graphql",
+      "file": "../../advisory/qs_ghsa_advisories.json"
+    }
+  ],
+  "agents": {
+    "planner": {
+      "plan": {
+        "subtasks": [
+          {
+            "id": "s1",
+            "title": "Inventory dependencies",
+            "description": "Read package.json and package-lock.json via GitHub contents and list runtime dependencies with resolved versions. Done when every dependency has a name and version.",
+            "dependsOn": [],
+            "roleHint": "researcher",
+            "output": {
+              "key": "inventory",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dependencies": {
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "dependencies"
+                ]
+              }
+            },
+            "inputKeys": []
+          },
+          {
+            "id": "s2",
+            "title": "Query vulnerabilities",
+            "description": "Query OSV, with the GitHub Advisory fallback, for the vulnerable-looking dependency (qs 6.5.2). Done when it has a vulnerability list or an explicit unknown.",
+            "dependsOn": [
+              "s1"
+            ],
+            "roleHint": "researcher",
+            "output": {
+              "key": "vulns",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "advisories": {
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "advisories"
+                ]
+              }
+            },
+            "inputKeys": [
+              "inventory"
+            ]
+          },
+          {
+            "id": "s3",
+            "title": "Assess upgrade risk",
+            "description": "Read npm metadata, release notes and the commit comparison for the upgrade path. Done when the upgrade has a breaking-change risk or an explicit unknown.",
+            "dependsOn": [
+              "s1"
+            ],
+            "roleHint": "researcher",
+            "output": {
+              "key": "upgrade_risk",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "latest": {
+                    "type": "string"
+                  },
+                  "risk": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "latest",
+                  "risk"
+                ]
+              }
+            },
+            "inputKeys": [
+              "inventory"
+            ]
+          },
+          {
+            "id": "s4",
+            "title": "Write remediation report",
+            "description": "Write the prioritized remediation report from the blackboard. Done when every vulnerable dependency has a fixed version, risk and action, and unknowns are listed.",
+            "dependsOn": [
+              "s1",
+              "s2",
+              "s3"
+            ],
+            "roleHint": "executor",
+            "output": {
+              "key": "report"
+            },
+            "inputKeys": [
+              "inventory",
+              "vulns",
+              "upgrade_risk"
+            ]
+          }
+        ]
+      }
+    },
+    "researcher": {
+      "s1": {
+        "calls": [
+          {
+            "tool": "github_get_contents",
+            "input": {
+              "owner": "expressjs",
+              "repo": "express",
+              "path": "package.json"
+            },
+            "require": "decodedContent"
+          },
+          {
+            "tool": "github_get_contents",
+            "input": {
+              "owner": "expressjs",
+              "repo": "express",
+              "path": "package-lock.json"
+            },
+            "require": "decodedContent"
+          },
+          {
+            "tool": "parse_dependency_inventory",
+            "input": {
+              "packageJson": {
+                "$from": 1,
+                "path": "decodedContent"
+              },
+              "packageLock": {
+                "$from": 2,
+                "path": "decodedContent"
+              }
+            },
+            "require": "direct"
+          }
+        ],
+        "result": {
+          "value": {
+            "dependencies": [
+              {
+                "name": "express",
+                "version": "4.16.0"
+              },
+              {
+                "name": "qs",
+                "version": "6.5.2"
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "claim": "express 4.16.0 is the repository's own version",
+              "source": "github_get_contents",
+              "toolCallId": "$1",
+              "quote": "\"version\": \"4.16.0\""
+            },
+            {
+              "claim": "qs is a runtime dependency",
+              "source": "parse_dependency_inventory",
+              "toolCallId": "$3",
+              "quote": "qs"
+            }
+          ]
+        },
+        "degraded": {
+          "value": {
+            "dependencies": []
+          },
+          "evidence": [],
+          "degradedReason": "package.json or the lockfile could not be read, so the dependency inventory is unknown"
+        }
+      },
+      "s2": {
+        "calls": [
+          {
+            "tool": "osv_query",
+            "input": {
+              "package": {
+                "name": "qs",
+                "ecosystem": "npm"
+              },
+              "version": "6.5.2"
+            },
+            "require": "vulns"
+          },
+          {
+            "tool": "osv_query_batch",
+            "input": {
+              "queries": [
+                {
+                  "package": {
+                    "name": "qs",
+                    "ecosystem": "npm"
+                  },
+                  "version": "6.5.2"
+                }
+              ]
+            },
+            "require": "results"
+          },
+          {
+            "tool": "github_advisory_graphql",
+            "input": {
+              "package": "qs",
+              "ecosystem": "NPM"
+            },
+            "require": "advisories"
+          },
+          {
+            "tool": "query_vulnerabilities",
+            "input": {
+              "package": "qs",
+              "version": "6.5.2"
+            },
+            "require": "vulnerabilities"
+          }
+        ],
+        "result": {
+          "value": {
+            "advisories": [
+              {
+                "id": "GHSA-hrpp-h998-j3pp",
+                "cve": "CVE-2022-24999",
+                "package": "qs",
+                "affected": "6.5.2",
+                "fixedIn": "6.7.3",
+                "severity": "HIGH"
+              }
+            ]
+          },
+          "evidence": [
+            {
+              "claim": "qs 6.5.2 is affected by GHSA-hrpp-h998-j3pp (CVE-2022-24999), prototype pollution",
+              "source": "osv_query",
+              "toolCallId": "$1",
+              "quote": "qs vulnerable to prototype pollution"
+            },
+            {
+              "claim": "The advisory rates the issue HIGH",
+              "source": "github_advisory_graphql",
+              "toolCallId": "$3",
+              "quote": "HIGH"
+            }
+          ]
+        },
+        "degraded": {
+          "value": {
+            "advisories": []
+          },
+          "evidence": [],
+          "degradedReason": "a vulnerability source failed or came back empty, so advisories for qs are unknown, not absent"
+        }
+      },
+      "s3": {
+        "calls": [
+          {
+            "tool": "npm_package_metadata",
+            "input": {
+              "package": "qs"
+            },
+            "require": "dist-tags"
+          },
+          {
+            "tool": "get_package_metadata",
+            "input": {
+              "package": "qs"
+            },
+            "require": "metadata"
+          },
+          {
+            "tool": "github_get_releases",
+            "input": {
+              "owner": "expressjs",
+              "repo": "express"
+            },
+            "require": "0.tag_name"
+          },
+          {
+            "tool": "github_compare_commits",
+            "input": {
+              "owner": "expressjs",
+              "repo": "express",
+              "base": "4.16.0",
+              "head": "4.18.2"
+            },
+            "require": "commits"
+          },
+          {
+            "tool": "get_release_notes",
+            "input": {
+              "owner": "expressjs",
+              "repo": "express",
+              "targetVersion": "4.18.2"
+            },
+            "require": "found"
+          }
+        ],
+        "result": {
+          "value": {
+            "latest": "6.13.0",
+            "risk": "medium"
+          },
+          "evidence": [
+            {
+              "claim": "The latest qs release is 6.13.0",
+              "source": "npm_package_metadata",
+              "toolCallId": "$1",
+              "quote": "\"latest\": \"6.13.0\""
+            },
+            {
+              "claim": "Express 4.18.2 updates qs to 6.11.0 to resolve the advisory",
+              "source": "github_compare_commits",
+              "toolCallId": "$4",
+              "quote": "fix: update qs to 6.11.0 to resolve GHSA-hrpp-h998-j3pp"
+            }
+          ]
+        },
+        "degraded": {
+          "value": {
+            "latest": "unknown",
+            "risk": "unknown"
+          },
+          "evidence": [],
+          "degradedReason": "registry, release or comparison data was unavailable, so the upgrade risk is unknown"
+        }
+      }
+    },
+    "executor": {
+      "s4": {
+        "calls": [
+          {
+            "tool": "read_blackboard",
+            "input": {
+              "key": "inventory"
+            }
+          },
+          {
+            "tool": "read_blackboard",
+            "input": {
+              "key": "vulns"
+            }
+          },
+          {
+            "tool": "read_blackboard",
+            "input": {
+              "key": "upgrade_risk"
+            }
+          }
+        ],
+        "result": {
+          "value": {
+            "summary": "qs 6.5.2 has one HIGH prototype-pollution advisory; upgrade to a fixed release.",
+            "items": [
+              {
+                "package": "qs",
+                "currentVersion": "6.5.2",
+                "advisories": [
+                  "GHSA-hrpp-h998-j3pp"
+                ],
+                "fixedVersion": "6.7.3",
+                "breakingChangeRisk": "medium",
+                "recommendedAction": "Upgrade qs to at least 6.7.3 (latest 6.13.0) and run the test suite.",
+                "priority": 1
+              }
+            ],
+            "unknowns": []
+          },
+          "evidence": [
+            {
+              "claim": "express 4.16.0 depends on qs 6.5.2",
+              "source": "blackboard:inventory"
+            },
+            {
+              "claim": "qs 6.5.2 is affected by GHSA-hrpp-h998-j3pp",
+              "source": "blackboard:vulns"
+            },
+            {
+              "claim": "The latest qs release is 6.13.0",
+              "source": "blackboard:upgrade_risk"
+            }
+          ]
+        },
+        "degraded": {
+          "value": {
+            "summary": "Partial report: some inputs were unavailable and are listed as unknown.",
+            "items": [],
+            "unknowns": [
+              "Dependency, advisory or upgrade-risk data was degraded; nothing here means the repository is safe."
+            ]
+          },
+          "evidence": [],
+          "degradedReason": "the report was built from degraded inputs"
+        }
+      },
+      "wrap-up": {
+        "calls": [],
+        "result": {
+          "value": {
+            "summary": "qs 6.5.2 has one HIGH prototype-pollution advisory; upgrade to a fixed release.",
+            "items": [
+              {
+                "package": "qs",
+                "currentVersion": "6.5.2",
+                "advisories": [
+                  "GHSA-hrpp-h998-j3pp"
+                ],
+                "fixedVersion": "6.7.3",
+                "breakingChangeRisk": "medium",
+                "recommendedAction": "Upgrade qs to at least 6.7.3 (latest 6.13.0) and run the test suite.",
+                "priority": 1
+              }
+            ],
+            "unknowns": []
+          },
+          "evidence": []
+        },
+        "degraded": {
+          "value": {
+            "summary": "Partial report: some inputs were unavailable and are listed as unknown.",
+            "items": [],
+            "unknowns": [
+              "Dependency, advisory or upgrade-risk data was degraded; nothing here means the repository is safe."
+            ]
+          },
+          "evidence": [],
+          "degradedReason": "run stopped early"
+        }
+      }
+    }
+  }
+}

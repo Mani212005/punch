@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { TraceEvent } from "@punch/shared";
 import {
@@ -8,6 +10,18 @@ import {
 } from "../index.js";
 
 describe("Trace Reducer", () => {
+  it("settles every seen slot when a run finishes degraded", () => {
+    const lines = readFileSync(resolve(__dirname, "../../../../../traces/denial.jsonl"), "utf8");
+    const state = reduceTrace(
+      lines
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l) as TraceEvent),
+    );
+    expect(state.run.status).toBe("degraded");
+    for (const role of state.seenRoles) expect(state.slots[role].state).toBe("completed");
+  });
+
   it("initializes empty board state with default slot lanes", () => {
     const state = createInitialBoardState();
     expect(state.run.status).toBe("pending");
