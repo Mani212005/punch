@@ -5,18 +5,14 @@
       "id": "anthropic",
       "kind": "anthropic",
       "apiKeyEnv": "ANTHROPIC_API_KEY"
-    },
-    {
-      "id": "antigravity",
-      "kind": "antigravity"
     }
   ],
   "agents": [
     {
-      "id": "claude-3-5-sonnet",
-      "displayName": "Claude 3.5 Sonnet",
+      "id": "claude-sonnet-5",
+      "displayName": "Claude Sonnet 5",
       "providerId": "anthropic",
-      "model": "claude-3-5-sonnet-20241022",
+      "model": "claude-sonnet-5",
       "costTier": "high",
       "roles": ["orchestrator", "planner", "researcher", "executor", "critic"],
       "strengths": "Strong reasoning, coding, and general tasks.",
@@ -26,10 +22,10 @@
       }
     },
     {
-      "id": "claude-3-5-haiku",
-      "displayName": "Claude 3.5 Haiku",
+      "id": "claude-haiku-4-5",
+      "displayName": "Claude Haiku 4.5",
       "providerId": "anthropic",
-      "model": "claude-3-5-haiku-20241022",
+      "model": "claude-haiku-4-5-20251001",
       "costTier": "low",
       "roles": ["researcher", "critic"],
       "strengths": "Fast, cheap, good for simple tasks."
@@ -39,7 +35,7 @@
     "pins": [
       {
         "role": "orchestrator",
-        "agentId": "claude-3-5-sonnet"
+        "agentId": "claude-sonnet-5"
       }
     ],
     "fallbackChains": [],
@@ -60,6 +56,6 @@
   },
   "defaults": {
     "mode": "auto",
-    "orchestratorAgentId": "claude-3-5-sonnet"
+    "orchestratorAgentId": "claude-sonnet-5"
   }
 }
