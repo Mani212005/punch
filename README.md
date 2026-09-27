@@ -122,3 +122,33 @@ In progress or not merged:
 - Dedicated investigation role prompts and the investigation DAG template. The planner on main still describes dependency triage.
 - The web console page and `serve --tunnel` for remote viewing.
 - Supply-chain anomaly signals (stretch).
+
+## Demo script
+
+This is the recommended script for a live demonstration of Punch. The first beat highlights the security investigation features; the second and third highlight control and fallback. Before the demo, ensure the engine is running and the web console is paired. The live approval step files a real issue on `https://github.com/Mani212005/punch`, so clear any previous test issues beforehand.
+
+### 1. The clean auto run (Security investigation)
+
+Start an auto run on a target repository: `pnpm punch run <url>`.
+Narrate the flow on the web watch board:
+
+- **Discovery:** The planner maps the work and the researcher finds a vulnerability.
+- **Reachability & Critique:** Reachability is investigated. The adversarial critic reviews the claim.
+- **Replan:** The critic rejects weak evidence; the engine triggers a targeted replan.
+- **Takeover:** While re-evaluating reachability, the agent crashes (or is killed live). A backup agent takes over from the exact point of failure, reusing the previous context without redoing work.
+- **Validation:** The vulnerability is determined relevant and an upgrade is proposed. The sandbox runs the upgrade and verifies the tests pass.
+- **Approval:** The human approves the remediation. Punch files the issue or PR.
+
+### 2. Manual run on a different agent mix
+
+Start a new run, but override the default agents in `~/.punch/config.json` to show how Jev ranks and routes to different models.
+
+- Demonstrate the router policy picking cheaper models for bulk work and reserving high-tier models for the planner and critic.
+- Show the run proceeding smoothly with a different mix of API and CLI agents.
+
+### 3. Denied approval and CLI fallback
+
+Start a final run that proposes a risky upgrade.
+
+- **Denied approval:** When the executor asks for permission to open a PR, deny it through the web UI (`punch-cyan.vercel.app`). Emphasize that Punch never performs irreversible actions without a human yes.
+- **CLI Fallback:** Rehearse controlling the system from the terminal if the web UI is unavailable. Run `pnpm punch approve <runId> <approvalId>` or `pnpm punch deny` to answer pending approvals, and `pnpm punch kill <runId> <slot>` to manually kill a wedged agent.
