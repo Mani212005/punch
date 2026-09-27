@@ -233,6 +233,20 @@ export default function ConsoleBoard() {
 
   const startRun = useCallback(async () => {
     if (!client || starting) return;
+    if (!config) {
+      if (!target.trim().startsWith("fixture:")) {
+        setRunError(
+          "Cannot start run: ~/.punch/config.json is missing or invalid. A valid config is required for repository runs.",
+        );
+        return;
+      }
+      if (mode === "manual") {
+        setRunError(
+          "Cannot start run: manual mode requires a valid ~/.punch/config.json to assign agents.",
+        );
+        return;
+      }
+    }
     setStarting(true);
     setRunError(null);
     try {
@@ -360,7 +374,7 @@ export default function ConsoleBoard() {
                     onTarget={setTarget}
                     running={starting || runActive}
                     onRun={() => void startRun()}
-                    runError={runError}
+                    runError={runError || live.error}
                     autoConfirm={config?.policy.autoConfirmBelowConfidence ?? null}
                   />
                   <LiveSlotsTile

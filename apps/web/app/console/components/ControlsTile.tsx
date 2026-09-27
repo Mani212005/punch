@@ -69,7 +69,13 @@ export function ControlsTile(props: Props) {
             value={props.orchestratorId}
             onChange={(event) => props.onOrchestrator(event.target.value)}
           >
-            {options.length === 0 && <option value="">no agents configured</option>}
+            {options.length === 0 ? (
+              <option value="">no agents configured</option>
+            ) : options.every((o) => o.disabled) ? (
+              <option value="" disabled>
+                no eligible agents
+              </option>
+            ) : null}
             {options.map((option) => (
               <option key={option.id} value={option.id} disabled={option.disabled}>
                 {option.label}
