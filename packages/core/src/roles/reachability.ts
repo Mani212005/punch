@@ -98,7 +98,7 @@ export async function runReachability(deps: RoleDeps, input: ProducerInput): Pro
     inputs: input.inputs,
     tools: toolsForRole("reachability"),
     resultSchema: producerResultSchema(subtask),
-    defaultMaxTurns: 8,
+    defaultMaxTurns: 20,
   });
   const draft = draftFromEnvelope("reachability", output);
   if (draft.status === "ok") {

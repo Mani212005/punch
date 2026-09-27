@@ -26,7 +26,7 @@ export class AntigravityAdapter implements AgentAdapter {
     toolCalling: false,
     structuredOutput: false,
     streaming: true,
-    effort: true,
+    effort: false,
   };
 
   private readonly binary: string;

@@ -151,4 +151,4 @@ Start a new run, but override the default agents in `~/.punch/config.json` to sh
 Start a final run that proposes a risky upgrade.
 
 - **Denied approval:** When the executor asks for permission to open a PR, deny it through the web UI (`punch-cyan.vercel.app`). Emphasize that Punch never performs irreversible actions without a human yes.
-- **CLI Fallback:** Rehearse controlling the system from the terminal if the web UI is unavailable. Run `pnpm punch approve <runId> <approvalId>` or `pnpm punch deny` to answer pending approvals, and `pnpm punch kill <runId> <slot>` to manually kill a wedged agent.
+- **CLI Fallback:** Rehearse controlling the system from the terminal if the web UI is unavailable. Run `pnpm punch approve <runId> <approvalId>` or `pnpm punch deny <runId> <approvalId>` to answer pending approvals, and `pnpm punch kill <runId> <slot>` to manually kill a wedged agent.
