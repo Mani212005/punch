@@ -834,7 +834,24 @@
           ]
         },
         "degraded": {
-          "value": { "assessments": [] },
+          "value": {
+            "assessments": [
+              {
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "reachability": {
+                  "verdict": "UNKNOWN",
+                  "exists": "yes",
+                  "exposed": "unknown",
+                  "exploitable": "unknown",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": [],
+                  "summary": "Static analysis tools were unavailable; reachability is unknown, never assumed absent."
+                }
+              }
+            ]
+          },
           "evidence": [],
           "degradedReason": "static analysis tools unavailable"
         }
@@ -905,7 +922,24 @@
           ]
         },
         "degraded": {
-          "value": { "impacts": [] },
+          "value": {
+            "impacts": [
+              {
+                "dependency": "qs",
+                "from": "6.5.2",
+                "to": "6.13.0",
+                "semverChange": "minor",
+                "releaseNotes": null,
+                "removedApisInUse": [],
+                "impact": {
+                  "level": "MEDIUM",
+                  "detectedRisks": [],
+                  "unknowns": ["release notes and compare data were unavailable, so breaking changes are unknown"],
+                  "claimIds": []
+                }
+              }
+            ]
+          },
           "evidence": [],
           "degradedReason": "release data unavailable"
         }
@@ -1001,7 +1035,39 @@
           ]
         },
         "degraded": {
-          "value": { "findings": [], "remediations": [] },
+          "value": {
+            "findings": [
+              {
+                "id": "f-qs",
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "severity": "HIGH",
+                "reachability": {
+                  "verdict": "UNKNOWN",
+                  "exists": "yes",
+                  "exposed": "unknown",
+                  "exploitable": "unknown",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": [],
+                  "summary": "Evidence streams were unavailable; reachability is unknown, never assumed absent."
+                },
+                "upgrade": { "from": "6.5.2", "to": "6.13.0" },
+                "upgradeImpact": {
+                  "level": "MEDIUM",
+                  "detectedRisks": [],
+                  "unknowns": ["upgrade impact evidence was unavailable"],
+                  "claimIds": []
+                },
+                "sandbox": null,
+                "critic": "PENDING",
+                "recommendedAction": "HUMAN_REVIEW",
+                "reasoning": "Degraded inputs: reachability and impact are unknown, so a human must review before any remediation.",
+                "claimIds": []
+              }
+            ],
+            "remediations": []
+          },
           "evidence": [],
           "degradedReason": "evidence streams unavailable"
         }
@@ -1095,7 +1161,39 @@
           ]
         },
         "degraded": {
-          "value": { "findings": [], "remediations": [] },
+          "value": {
+            "findings": [
+              {
+                "id": "f-qs",
+                "dependency": "qs",
+                "version": "6.5.2",
+                "advisoryIds": ["CVE-2022-24999"],
+                "severity": "HIGH",
+                "reachability": {
+                  "verdict": "UNKNOWN",
+                  "exists": "yes",
+                  "exposed": "unknown",
+                  "exploitable": "unknown",
+                  "affectedSymbols": ["parse"],
+                  "claimIds": [],
+                  "summary": "Evidence streams were unavailable; reachability is unknown, never assumed absent."
+                },
+                "upgrade": { "from": "6.5.2", "to": "6.13.0" },
+                "upgradeImpact": {
+                  "level": "MEDIUM",
+                  "detectedRisks": [],
+                  "unknowns": ["upgrade impact evidence was unavailable"],
+                  "claimIds": []
+                },
+                "sandbox": null,
+                "critic": "PENDING",
+                "recommendedAction": "HUMAN_REVIEW",
+                "reasoning": "Degraded inputs: reachability and impact are unknown, so a human must review before any remediation.",
+                "claimIds": []
+              }
+            ],
+            "remediations": []
+          },
           "evidence": [],
           "degradedReason": "evidence streams unavailable"
         }

@@ -51,7 +51,29 @@ pnpm punch run fixtures/runs/clean       # offline replay of a fixture, no keys 
 
 Useful flags: `--budget-usd <usd>` caps spend, `--unattended` auto-denies irreversible actions instead of asking, `--chaos <profile>` injects failures such as `kill-after:<role>:<n>` or `provider-down:<id>` to exercise takeover, and `-c <path>` picks a config. The run writes `runs/<id>/trace.jsonl`.
 
-Other commands: `punch bench <target> --runs <n>` repeats a run and reports cost, latency and takeovers, `punch kill <runId> <slot>` kills the agent in a slot on purpose, and `punch approve` / `punch deny <runId> <approvalId>` answer a pending approval.
+Other commands: `punch bench <target> --runs <n>` repeats a run and reports cost, latency and takeovers (add `--resilience` for the failure-injection bench below), `punch kill <runId> <slot>` kills the agent in a slot on purpose, and `punch approve` / `punch deny <runId> <approvalId>` answer a pending approval.
+
+### Resilience bench
+
+```sh
+pnpm punch bench fixtures/runs/investigation --resilience --runs 16
+```
+
+Runs N investigations from the recorded fixture with mocked adapters (no network, no keys), injecting the eight failure modes of the addendum round-robin: agent crash, timeout, malformed output, hallucinated claim, tool failure, rate limit, critic rejection and operator kill. It prints the addendum's summary plus every section 11 metric, and exits non-zero unless evidence preservation is 100% across takeovers. `--modes crash,timeout` picks a subset.
+
+Measured on this fixture (16 investigations, two per mode):
+
+```text
+16 investigations
+
+Agent failures injected: 28
+Successful recoveries: 28
+Average takeover: 1ms
+Context lost: 0.0%
+Final task completion: 14/16
+```
+
+The two runs short of "completed" are the tool-failure runs: the failed tool degrades that step and the report flags the unknowns instead of guessing, so they finish `degraded`. Takeover success was 28/28, the critic rejected 36 of 146 verdicts, and the scripted operator approved 16 of 16 issue requests. Latency and cost come from the fixture's scripted agents, so they show the plumbing works, not what a real model run costs. A run against real providers has not been measured yet.
 
 ### Serve the engine and pair the website
 

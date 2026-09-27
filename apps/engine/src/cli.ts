@@ -120,7 +120,29 @@ export function buildProgram(): Command {
     .option("--unattended", "auto-deny irreversible actions instead of asking")
     .option("--budget-usd <usd>", "spend cap in USD for each run", Number)
     .option("--json", "print the summary as JSON instead of a markdown table")
+    .option(
+      "--resilience",
+      "inject the eight failure modes round-robin into an investigation fixture and report the resilience metrics (fixture targets only)",
+    )
+    .option("--modes <ids>", "with --resilience: comma-separated failure modes (default all eight)")
     .action(async (target: string, options) => {
+      if (options.resilience) {
+        const { resilienceBench } = await import("./resilience-bench.js");
+        const { renderResilienceMarkdown } = await import("@punch/core");
+        try {
+          const summary = await resilienceBench(target, {
+            ...(options.runs !== "3" ? { runs: Number(options.runs) } : {}),
+            ...(options.modes ? { modes: String(options.modes).split(",") } : {}),
+            runsDir: options.runsDir,
+          });
+          if (options.json) console.log(JSON.stringify(summary, null, 2));
+          else console.log(renderResilienceMarkdown(summary));
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : String(err));
+          process.exitCode = 1;
+        }
+        return;
+      }
       const { benchCommand } = await import("./bench.js");
       const { renderBenchMarkdown } = await import("@punch/core");
       const runs = Number(options.runs);
