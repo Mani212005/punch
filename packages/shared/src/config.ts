@@ -46,8 +46,8 @@ export const Policy = z.object({
   maxReplacementsPerSlot: z.number().int().nonnegative().default(2),
   stallAfterMs: z
     .object({
-      api: z.number().int().positive().default(30_000),
-      cli: z.number().int().positive().default(90_000),
+      api: z.number().int().positive().default(45_000),
+      cli: z.number().int().positive().default(120_000),
     })
     .default({ api: 45_000, cli: 120_000 }),
 });

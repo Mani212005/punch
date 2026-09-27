@@ -1,0 +1,18 @@
+
+> punch@ punch /Users/manijoshi/.treehouse/punch-314546/1/punch
+> pnpm --filter @punch/engine exec node bin/punch.js bench https://github.com/vercel/next.js --runs 1 --chaos rate-limit:ag-cli
+
+# Punch bench - https://github.com/vercel/next.js
+
+- Runs: 1
+- Chaos: rate-limit:ag-cli
+- Task completion rate: 0.0% (0/1)
+- Takeovers: 1 total, 1.00 mean per run
+- Mean detection-to-takeover time: 0ms
+- Mean takeover time: 12558ms
+- Mean cost per run: $0.0000 (measured)
+- Mean latency per run: 19710ms (measured)
+
+| Run | Status | Latency | Cost (USD) | Steps | Takeovers | Mean detection |
+| --- | ------ | ------- | ---------- | ----- | --------- | -------------- |
+| 1   | failed | 19710ms | $0.0000    | 4     | 1         | 0ms            |

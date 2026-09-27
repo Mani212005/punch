@@ -61,7 +61,7 @@ export async function runResearcher(deps: RoleDeps, input: ProducerInput): Promi
     inputs: input.inputs,
     tools: toolsForRole("researcher"),
     resultSchema: producerResultSchema(subtask),
-    defaultMaxTurns: 8,
+    defaultMaxTurns: 16,
   });
   const draft = draftFromEnvelope("researcher", output);
   if (draft.status === "ok" && !draft.evidence.some((e) => e.claim)) {
