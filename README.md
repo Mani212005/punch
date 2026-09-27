@@ -35,7 +35,7 @@ pnpm build
 
 Copy `.env.example` to `.env` for the provider key names. The variables are `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `TYPESAFE_API_KEY` (Jev router and critic pre-check) and `GITHUB_TOKEN`. Export the ones you use in your shell.
 
-Agents, providers and routing policy live in `~/.punch/config.json`. Start from [config.example.json](config.example.json). Point at another file with `-c <path>` or the `PUNCH_CONFIG` variable.
+Agents, providers and routing policy live in `~/.punch/config.json`. Start from [config.example.json](config.example.json), or [config.claude-code.example.json](config.claude-code.example.json) to run on a signed-in Claude Code subscription with no API key. Point at another file with `-c <path>` or the `PUNCH_CONFIG` variable.
 
 ```sh
 pnpm punch config validate    # schema and env var check

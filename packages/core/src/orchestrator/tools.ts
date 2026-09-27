@@ -313,7 +313,7 @@ export function resolveOrchestratorAgent(
   if (!provider) throw new Error(`unknown provider "${agent.providerId}" for agent "${agent.id}"`);
   if (provider.kind !== "anthropic" && provider.kind !== "gemini") {
     throw new NonToolCallingOrchestratorError(
-      `orchestrator agent "${agent.id}" uses provider kind "${provider.kind}", which cannot call tools; choose an Anthropic or Gemini agent`,
+      `orchestrator agent "${agent.id}" uses provider kind "${provider.kind}", which cannot call tools, and the orchestrator chat needs tool calling. Add an Anthropic or Gemini provider (set ANTHROPIC_API_KEY or GEMINI_API_KEY) and point defaults.orchestratorAgentId at it. \`punch run\` still works with CLI agents only`,
     );
   }
   return { agent, provider };

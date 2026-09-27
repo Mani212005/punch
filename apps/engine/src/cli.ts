@@ -1,6 +1,6 @@
 import { Command } from "commander";
+import { testAgentHealth, testProviderHealth } from "@punch/core";
 import { getConfigPath, loadConfig, ConfigError } from "./config/index.js";
-import { TestAdapterRegistry } from "./config/registry.js";
 import { killCommand } from "./kill.js";
 import { runCommand } from "./run.js";
 import { serveCommand } from "./server/serve.js";
@@ -239,18 +239,17 @@ export function buildProgram(): Command {
       try {
         const configPath = getConfigPath(options.config);
         const configData = await loadConfig(configPath);
-        const registry = new TestAdapterRegistry();
 
         console.log("Testing CLI providers:");
         const cliProviders = configData.providers.filter((p) => !("apiKeyEnv" in p));
         for (const provider of cliProviders) {
-          const res = await registry.testCliProvider(provider.id, configData);
+          const res = await testProviderHealth(provider.id, configData);
           console.log(`  ${provider.id}: ${res.ok ? "OK" : `FAIL (${res.detail})`}`);
         }
 
         console.log("Testing agents:");
         for (const agent of configData.agents) {
-          const res = await registry.testAgent(agent.id, configData);
+          const res = await testAgentHealth(agent.id, configData);
           console.log(`  ${agent.id}: ${res.ok ? "OK" : `FAIL (${res.detail})`}`);
         }
       } catch (err) {
